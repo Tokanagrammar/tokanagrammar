@@ -1,7 +1,8 @@
-tokanagrammar- Development Branch.
+tokanagrammar- Release Repository
 =============
 
-This is the development branch of `tokanagrammar`. For stable, well tested code, see `tokanagrammar/tokanagrammar`
+This repository contains only release branches.
+For lastest features, see the development repository
 
 This is a jigsaw-like puzzle game, except each piece is token from a source file, and the 'complete picture' is the program.
 
