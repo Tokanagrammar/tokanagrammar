@@ -19,17 +19,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package edu.umb.cs.parser;
+package edu.umb.cs.api;
+
+import edu.umb.cs.api.service.DatabaseService;
+import edu.umb.cs.entity.User;
+import java.util.List;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
- * Place holder 
+ * Simple test on some of the API methods
  * @author Vy Thao Nguyen
  */
-public class InternalException extends RuntimeException
+public class APITest 
 {
-    
-    public InternalException(String msg)
+    @Before
+    public void init()
     {
-        super(msg);
+        APIs.startTest();
+        
+    }
+    
+    @Test
+    public void testNewUser()
+    {
+        User user = APIs.newUser("vynguyen");
+        List<User> users = APIs.getUsers();
+        
+        assertEquals(1, users.size());
+        assertEquals("vynguyen", user.getUsername());
     }
 }

@@ -1,14 +1,46 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.umb.cs</groupId>
     <artifactId>tokanagrammar</artifactId>
-    <version>0.1.1</version>
+    <version>0.4</version>
     <name>tokanagrammar</name>
     <packaging>jar</packaging>
-    <url>http://maven.apache.org</url>
+    <url>http://tokanagrammar.github.com/</url>
+
+    <developers>
+        <developer>
+            <id>oontvoo</id>
+            <name>Vy Thao</name>
+            <email>oontvoo@hotmail.com</email>
+            <url>http://www.cs.umb.edu/~vngu0510</url>
+        </developer>
+        <developer>
+            <id>vytng</id>
+            <name>Vy Thuy</name>
+            <email>vythuy.n@gmail.com</email>
+            <url>http://www.cs.umb.edu/~vytng91</url>
+        </developer>
+        <developer>
+            <id>matt8541</id>
+            <name>Mathew</name>
+        </developer>
+        <developer>
+            <id>lamdersar</id>
+            <name>Kai</name>
+        </developer>
+    </developers>
+	
+    <repositories>
+        <repository>
+            <id>objectdb</id>
+            <name>ObjectDB Repository</name>
+            <url>http://m2.objectdb.com</url>
+        </repository>
+    </repositories>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -28,7 +60,12 @@
             <artifactId>javafx</artifactId>
             <version>2.2.7</version>
         </dependency>
-    </dependencies>
+		<dependency>
+            <groupId>com.objectdb</groupId>
+            <artifactId>objectdb</artifactId>
+            <version>2.4.7</version>
+        </dependency>
+	</dependencies>
 
   <!-- rules for build -->
     <build>
@@ -150,6 +187,7 @@
                         <exclude>**/*.fxml</exclude>
                         <exclude>target/generated-sources/javacc/GrammarParser/*.java</exclude>
                         <exclude>target/**</exclude>
+                        <exclude>puzzles/**</exclude>
                     </excludes>
                     <mapping>
                         <g>JAVADOC_STYLE</g>

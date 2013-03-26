@@ -19,17 +19,45 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package edu.umb.cs.parser;
+package edu.umb.cs.source.std;
+
+import edu.umb.cs.source.ShuffledSource;
+import edu.umb.cs.source.SourceFile;
+import edu.umb.cs.source.Token;
+import java.util.List;
 
 /**
- * Place holder 
+ *
  * @author Vy Thao Nguyen
  */
-public class InternalException extends RuntimeException
+public class ShuffledSourceImpl implements ShuffledSource
 {
+    private final SourceFile original;
+    private final SourceFile shuffled;
+    private final List<Token> removed;
     
-    public InternalException(String msg)
+    public ShuffledSourceImpl(SourceFile original, SourceFile shuffled, List<Token> removed)
     {
-        super(msg);
+        this.original = original;
+        this.shuffled = shuffled;
+        this.removed = removed;
+    }
+
+    @Override
+    public SourceFile getOrinalSource()
+    {
+        return original;
+    }
+
+    @Override
+    public SourceFile getShuffledSource()
+    {
+        return shuffled;
+    }
+
+    @Override
+    public List<Token> getRemovedTokens()
+    {
+        return removed;
     }
 }

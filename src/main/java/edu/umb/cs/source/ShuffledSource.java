@@ -19,17 +19,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package edu.umb.cs.parser;
+package edu.umb.cs.source;
+
+import java.util.List;
 
 /**
- * Place holder 
+ *
  * @author Vy Thao Nguyen
  */
-public class InternalException extends RuntimeException
+public interface ShuffledSource 
 {
+    SourceFile getOrinalSource();
     
-    public InternalException(String msg)
-    {
-        super(msg);
-    }
+    SourceFile getShuffledSource();
+    
+    List<Token> getRemovedTokens();
 }

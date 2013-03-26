@@ -19,9 +19,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package edu.umb.cs.api;
+package edu.umb.cs.source;
 
-public class Foo
+/**
+ * 
+ * @author Vy Thao Nguyen
+ */
+public interface Token 
 {
-    
+    String image();
+    boolean isKeyWord();
+    boolean isLiteral();
+    boolean isIdentifier();
+    boolean isQuotedString();
+    boolean isEmpty();
 }

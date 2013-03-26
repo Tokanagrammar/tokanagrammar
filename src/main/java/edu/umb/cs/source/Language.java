@@ -19,17 +19,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package edu.umb.cs.parser;
+package edu.umb.cs.source;
 
 /**
- * Place holder 
+ * supported langauges
  * @author Vy Thao Nguyen
  */
-public class InternalException extends RuntimeException
+public enum Language 
 {
-    
-    public InternalException(String msg)
-    {
-        super(msg);
-    }
+    JAVA
 }
