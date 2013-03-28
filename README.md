@@ -3,7 +3,7 @@ Release 0.5
 
 Tokanagrammar - Release repo
 =============
-s
+
 Set up Development Environment
 =============
 
