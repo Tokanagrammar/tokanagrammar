@@ -90,7 +90,7 @@ public class DatabaseService
      */
     public static void closeConnection()
     {   
-        em.getTransaction().commit();
+        //em.getTransaction().commit();
         em.close();
         emf.close();
     }
@@ -133,6 +133,7 @@ public class DatabaseService
             for (Hint h : hints)
                 p.addHint(h);
             em.persist(p);
+            em.getTransaction().commit();
         }
         catch (IOException exc)
         {
@@ -156,7 +157,11 @@ public class DatabaseService
         return (count == 0 ? false : true);
     }
     
-    public static void persistPuzzle(Puzzle p)
+    /**
+     * 
+     * @deprecated
+     */
+    private static void persistPuzzle(Puzzle p)
     {
         em.persist(p);
         em.getTransaction().commit();

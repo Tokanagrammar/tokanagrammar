@@ -1,8 +1,7 @@
-tokanagrammar- Release Repository
+tokanagrammar- Development Branch.
 =============
 
-This repository contains only release branches.
-For lastest features, see the development repository
+This is the development branch of `tokanagrammar`. For stable, well tested code, see `tokanagrammar/tokanagrammar`
 
 This is a jigsaw-like puzzle game, except each piece is token from a source file, and the 'complete picture' is the program.
 
@@ -30,13 +29,15 @@ Set up Development Environment
 
 This step is sort of a 'workaround' to some bug. Once Oracle fixes this (hopefully in Java8, which is released this summer), we should be able to skip this, because, as they promised, `JavaFX` will be included natively in `Java` (just like `Swing` or other built-in APIs)
 
-
 CHEATSHEET
 =============
 
 This is a `maven` project, and  build phase requires every source file to have a header.
-0) Java Requirement
-The project uses `javafx`, hence you want to make sure you have `jdk.1.7.0-u14` (or higher)
+
+0) Be sure  you get the right version of `Java` (and `Maven`)
+
+- Run `mvn -version` to check `Java` and `Maven` version.
+- If the versions are not correct, follow instrutions in *Set up Development Environment* section.
 
 1) To automatically prepend a header:
 
@@ -54,11 +55,16 @@ The project uses `javafx`, hence you want to make sure you have `jdk.1.7.0-u14` 
 
 `mvn clean test`
 
-5) To build b tar.gz package (containing executable)
+5) To build binary tar.gz package (containing executable)
 
 `./build_binaries.sh`
 
-6) To build Apple OSX executable app
+6) To build binary zip package (on Windows)
+  *Note* This script requires <a href="http://www.7-zip.org">`7z`</a> to be already installed.
+
+`build_binaries.cmd`
+
+7) To build Apple OSX executable app
 
 `./build_binaries.sh macosx`
   

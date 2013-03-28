@@ -42,7 +42,21 @@ REM get license.txt
 COPY LICENSE.txt target\tokanagrammar\.
 
 REM get puzzles
-COPY puzzles target\tokanagrammar\.
+MD target\tokanagrammar\puzzles
+COPY puzzles target\tokanagrammar\puzzles\.
 
 REM zip them up!
 call 7z a -tzip target\tokanagrammar.zip %OUT_DIR%
+
+REM push  distributable file to website
+call git clone git@github.com:Tokanagrammar/tokanagrammar.github.com.git
+cd tokanagrammar.github.com
+call git checkout -b new_version
+cd ..
+COPY target\tokanagrammar.zip tokanagrammar.github.com\downloads\.
+cd tokanagrammar.github.com
+call git add .
+call git commit -am "add upload downloadable"
+call git push origin new_version
+
+echo ALL SET
