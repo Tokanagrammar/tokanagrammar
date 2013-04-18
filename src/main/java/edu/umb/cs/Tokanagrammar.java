@@ -21,51 +21,100 @@
 
 package edu.umb.cs;
 
+import edu.umb.cs.api.APIs;
+import edu.umb.cs.gui.GUI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 
 public class Tokanagrammar extends Application{
-	
-	//static Group root = new Group();		//fix this to keep track of everything needing blurring! -mhs
-	
+
+
+	private static final String TITLE = "Tokanagrammar " + APIs.getVersion();
+        
+        static AnchorPane page;
+        
+	private static final int FINAL_WIDTH = 886;
+	private static final int FINAL_HEIGHT = 689;
+	/**The main scene**/
+        private static Scene scene;
+	/**We need access to primaryStage to assign parent to other stages**/
+	private static Stage primaryStage;
+        
     public static void main(String[] args) {
         Application.launch(Tokanagrammar.class, (java.lang.String[]) null);
     }
 
     @Override
     public void start(Stage primaryStage) {
-    	
         try {
-            //AnchorPane page = (AnchorPane) FXMLLoader.load(Tokanagrammar.class.getResource("../../../../resources/fxml/Tokanagrammar.fxml"));
-        	AnchorPane page = (AnchorPane) FXMLLoader.load(Thread.currentThread().getContextClassLoader().getResource("fxml/Tokanagrammar.fxml"));
-        	Scene scene = new Scene(page);
+            // start all back end services
+            APIs.start();
+
+            Tokanagrammar.primaryStage = primaryStage;
+
+            primaryStage.initStyle(StageStyle.DECORATED);
+            primaryStage.setWidth(FINAL_WIDTH);
+            primaryStage.setHeight(FINAL_HEIGHT);
+            primaryStage.setResizable(true); 
+        	page = 	(AnchorPane) FXMLLoader.load(Thread.
+        						currentThread().getContextClassLoader().
+        						getResource("fxml/Tokanagrammar.fxml"));
+        	
+        	scene = new Scene(page);
+        	
             primaryStage.setScene(scene);
-            primaryStage.setTitle("Tokanagrammar 0.5");
+            primaryStage.getIcons().add(new Image(Tokanagrammar.class.
+            		getResourceAsStream("/images/ui/tokanagrammarIcon.fw.png")));
+            primaryStage.setTitle(TITLE);
+
+            primaryStage.setResizable(false);
+            primaryStage.sizeToScene();
+            primaryStage.initStyle(StageStyle.DECORATED);
+
+            //clean up db etc
+            // TODO: add confirmation dialogue?
+            primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>(){
+				@Override
+				public void handle(WindowEvent event) {
+                                        // stop all services properly
+					APIs.stop();
+				}
+            });
             primaryStage.show();
             
-            //root.getChildren().add(page);	// -mhs this is causing roll-overs to stop working, but I'd like to save all layers here.
-            //ref BUG --- -mhs experimenting with pause blur here seems to work here, but not in controller where I want it.
-            //root.getChildren().get(0).effectProperty().set(new BoxBlur());  //-mhs
+            GUI gui = GUI.getInstance();
+            gui.setCurCategories(APIs.getCategories());
+            gui.setCurDifficulty(50); // default?
+            
+            // TODO? Why another call to getInstance()???
+            GUI.getInstance().gameState_initGUI();
+            
         } catch (Exception ex) {
-            Logger.getLogger(Tokanagrammar.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Tokanagrammar.class.getName()).
+            log(Level.SEVERE, null, ex);
         }
     }
-    
-    /**
-     * Getting the group might be helpful in doing any kind of
-     * effect for the background.  (pausing is the only thing
-     * that comes to mind now... [blurring])
-     * @return
-     */
-    public static Group getRootGroup(){
-    	return null;
-    	//return root; //-mhs
+
+    public static AnchorPane getAnchorPane(){
+    	return page;
     }
+   
+     
+    public static Scene getScene(){
+    	return scene;
+    }
+    
+    public static Stage getStage(){
+    	return primaryStage;
+    }
+
 }

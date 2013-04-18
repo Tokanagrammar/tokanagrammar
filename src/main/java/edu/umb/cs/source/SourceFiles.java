@@ -21,8 +21,12 @@
 
 package edu.umb.cs.source;
 
+import edu.umb.cs.parser.BracingStyle;
 import edu.umb.cs.parser.InternalException;
-import edu.umb.cs.source.std.AutomaticallyParsedJavaSourceFile;
+import edu.umb.cs.parser.JavaParser;
+import edu.umb.cs.parser.ParseException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
 /**
@@ -31,15 +35,17 @@ import java.io.FileNotFoundException;
  */
 public class SourceFiles 
 {
-    public static SourceFile getSourceFile(String path,
-                                           Language languageType)
-                             throws FileNotFoundException
+    public static SourceFile getSourceFile(File file,
+                                           Language languageType,
+                                           BracingStyle style)
+                             throws FileNotFoundException, ParseException
     {
         switch(languageType)
         {
             case JAVA:
-                // TODO: REplace this code to use the 'smarter' java parser.
-                return new AutomaticallyParsedJavaSourceFile(path);
+                FileInputStream fin = new FileInputStream(file);
+                JavaParser parser = new JavaParser(new FileInputStream(file));
+                return parser.parseJava(style);
             default:
                 throw new InternalException("Unsupported Language: " + languageType);
         }

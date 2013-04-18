@@ -21,15 +21,18 @@
 
 package edu.umb.cs.api.service;
 
+import edu.umb.cs.entity.Game;
 import edu.umb.cs.entity.Hint;
 import edu.umb.cs.entity.Puzzle;
 import edu.umb.cs.entity.User;
+import edu.umb.cs.parser.ParseException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 
 /**
@@ -61,7 +64,11 @@ public class DatabaseService
         partialURL = "$objectdb/db/";
         emf = Persistence.createEntityManagerFactory(partialURL + dbName, properties);
         em = emf.createEntityManager();
-        em.getTransaction().begin();
+        
+        // make the classes known to ODB
+        em.find(User.class, User.class);
+        em.find(Puzzle.class, Puzzle.class);
+        em.find(Game.class, Game.class);
     }
 
     /**
@@ -81,7 +88,11 @@ public class DatabaseService
         properties.put("javax.persistence.jdbc.password", password);
         emf = Persistence.createEntityManagerFactory(partialURL + dbName, properties);
         em = emf.createEntityManager();
-        em.getTransaction().begin();
+        
+        // TODO replace all em.createQuery().exeucte... 
+        // with prepare state.
+        // ie., create those queries only once and execute them when needed
+        // (This saves A LOT of time in parsing)
     }
     
     /**
@@ -90,16 +101,35 @@ public class DatabaseService
      */
     public static void closeConnection()
     {   
-        //em.getTransaction().commit();
+        EntityTransaction t = em.getTransaction();
+        if (t.isActive())
+            t.commit();
         em.close();
         emf.close();
     }
     
+    /**
+     * Delete everything from db.
+     */
     public static void deleteAll()
     {
-        em.createQuery("DELETE FROM User u").executeUpdate();
-        em.createQuery("DELETE FROM Puzzle p").executeUpdate();
-        em.createQuery("DELETE FROM Game g").executeUpdate();
+        EntityTransaction t = em.getTransaction();
+        boolean success  = false;
+        try
+        {
+            t.begin();
+            em.createQuery("DELETE FROM Puzzle p").executeUpdate();
+            em.createQuery("DELETE FROM User u").executeUpdate();
+            em.createQuery("DELETE FROM Game g").executeUpdate();
+            success = true;
+        }
+        finally
+        {
+            if (success)
+                t.commit();
+            else
+                t.rollback();
+        }
     }
 
     /**
@@ -127,19 +157,28 @@ public class DatabaseService
      */
     public static boolean addPuzzle(String filePath, String expResult, String metaData, Hint... hints)
     {
+        boolean success = false;
+        EntityTransaction t = em.getTransaction();
         try
         {
+            t.begin();
             Puzzle p = new Puzzle(filePath, expResult, metaData);
             for (Hint h : hints)
                 p.addHint(h);
             em.persist(p);
-            em.getTransaction().commit();
+            success = true;
         }
-        catch (IOException exc)
+        catch (IOException | ParseException exc)
         {
             return false;
         }
-        
+        finally
+        {
+            if (success)
+                t.commit();
+            else
+                t.rollback();
+        }
         return true;
     }
     
@@ -166,7 +205,6 @@ public class DatabaseService
         em.persist(p);
         em.getTransaction().commit();
     }
-    
     /**
      * 
      * @param username
@@ -186,7 +224,7 @@ public class DatabaseService
     
     /**
      * Add a new user to the database
-     * Will throw exception if user
+     * Will throw exception if username has already been used.
      * 
      * @param username 
      * @return the user just got created
@@ -197,8 +235,24 @@ public class DatabaseService
         if (usernameExists(username))
             throw new Exception("Username has already existed");
         
-        User u = new User(username);
-        em.persist(u);
+        EntityTransaction t = em.getTransaction();
+        boolean success = false;
+        User u;
+        try
+        {
+            t.begin();
+            u = new User(username);
+            em.persist(u);
+            success = true;   
+        }
+        finally
+        {
+            if (success)
+                t.commit();
+            else
+                t.rollback();
+        }
+        
         return u;
     }
     
@@ -207,6 +261,10 @@ public class DatabaseService
         
     }
     
+    /**
+     * 
+     * @deprecated 
+     */
     public static void persistUser(User u)
     {
         em.persist(u);

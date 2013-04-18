@@ -21,28 +21,15 @@
 package edu.umb.cs.gui;
 
 import javafx.scene.image.Image;
-//import javafx.scene.image.WritableImage;
-import edu.umb.cs.demo.DemoToken;
+import javafx.scene.image.ImageView;
 
-public class IconizedToken {
+public abstract class IconizedToken {
 
-	/**The dynamically created image representation of a token**/
-	private Image image;
-	/**The original token**/
-	private DemoToken token;
-
-	public IconizedToken(Image image, DemoToken token) {
-		this.image = image;
-		this.token = token;
-	}
-
-
-	public Image getImage(){
-		return image;
-	}
-
-	public DemoToken getDemoToken(){
-		return token;
-	}
-
+	protected abstract ImageView initImageView(Image img);
+	
+	public abstract ImageView getImgView();
+	
+	public abstract Image getImage();
+	
+	
 }

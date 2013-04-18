@@ -25,11 +25,20 @@ import edu.umb.cs.api.service.DatabaseService;
 import edu.umb.cs.entity.Hint;
 import edu.umb.cs.entity.Puzzle;
 import edu.umb.cs.entity.User;
+import edu.umb.cs.parser.BracingStyle;
 import edu.umb.cs.parser.InternalException;
+import edu.umb.cs.source.Output;
 import edu.umb.cs.source.ShuffledSource;
 import edu.umb.cs.source.ShufflerKind;
 import edu.umb.cs.source.SourceFile;
+import edu.umb.cs.source.std.Utils;
+import java.io.*;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * APIs for interacting with the backend
@@ -37,6 +46,7 @@ import java.util.List;
  */
 public class APIs
 {   
+    private static final String LOG = "config/log.txt";
     private static final String PRODUCTION_DB = "tokanagrammar";
     private static boolean started = false;
     private static boolean stopped = false;
@@ -45,14 +55,65 @@ public class APIs
     private static boolean testStarted = false;
     private static boolean testStopped = false;
 
-    private static final String VERSION = "0.5"; // TODO: get this from config file
+    private static final String VERSION = findVersion();
+    private static final  PrintStream stdout = System.out;
+    private static final PrintStream logStream = getLogStream();
+    
+    private static PrintStream getLogStream()
+    {
+        try
+        {
+            return new PrintStream(new FileOutputStream(LOG, true), true);
+        }
+        catch (FileNotFoundException ex)
+        {
+            Logger.getLogger(APIs.class.getName()).log(Level.SEVERE, null, ex);
+            return stdout;
+        }
+    }
+
+    private static String findVersion()
+    {
+        String ret = "UNKNOWN";
+        try
+        {
+            FileInputStream fis = new FileInputStream(new File("config/version.txt"));
+            Scanner sc = new Scanner(fis);
+            ret = sc.next();
+        }
+        catch (FileNotFoundException ex)
+        {
+            ex.printStackTrace();
+        }
+
+        return ret;
+    }
 
     public static void start()
     {
         if (started)
             return;
         started = true;
+        // redirect stdout to log file
+       System.setOut(logStream);
+        
+        System.out.println("\n=================================");
+        System.out.println("Application started on: " + new Date());
         DatabaseService.openConnection(PRODUCTION_DB);
+        
+        // TEMP remoe this when we have the 'real' code
+        // for populating the db
+        // (For now, just wipe out everything and insert data 
+      removeAllRecords();
+
+       File dir = new File("puzzles");
+       assert dir.isDirectory() : "directory puzzles not exist";
+       
+       for (File f : dir.listFiles())
+       {
+           System.out.println("adding files; " + f.getAbsolutePath());
+           DatabaseService.addPuzzle(f.getAbsolutePath(), "Expted Result", "Metada");
+       }
     }
     
     public static void stop()
@@ -60,12 +121,23 @@ public class APIs
         if (stopped)
             return;
         stopped = true;
+        System.out.println("Application stopped: " + new Date());
+        System.setOut(stdout);
         DatabaseService.closeConnection();
     }
 
     public static String getVersion()
     {
         return VERSION;
+    }
+
+    public static List<CategoryDescriptor> getCategories()
+    {
+        // TODO: replace this with real call to db-service
+        // also keep a map of categorydesc ==> real-category obj ==> set of puzzles
+        return Arrays.asList(new CategoryDescriptor("Category 1", "desc1"),
+                             new CategoryDescriptor("Category 2", "desc2"),
+                             new CategoryDescriptor("Category 3", "desc3"));
     }
 
     public static void removeAllRecords()
@@ -83,19 +155,16 @@ public class APIs
     public static User newUser(String username)
     {
         checkStarted();
-        
-        // TODO: implement the warning mechnism
-        // ie., generate a unique username to use
-        // and issue a warning if the given username already exists
         try
         {
             User user = DatabaseService.addUser(username);
-            DatabaseService.persistUser(user);
             return user;
         }
         catch (Exception ex)
         {
-            
+            // TODO: implement the warning mechnism
+            // ie., generate a unique username to use
+            // and issue a warning if the given username already exists
             return null;
         }
     }
@@ -131,6 +200,22 @@ public class APIs
         return DatabaseService.getAllUsers();
     }
     
+    // temp
+    public static Output compile(String src, String name)
+    {
+        return Utils.compile(src, name);
+    }
+    
+    // temp
+    // should be remove!
+    private static int n = 0;
+    public static Puzzle getRandomPuzzle() throws Exception
+    {
+        int next = n % getPuzzles().size();
+        ++n;
+        // TODO: let user decide what style they 
+        return getPuzzles().get(next);
+    }
     /**
      * 
      * @return a list of available puzzles
@@ -151,22 +236,25 @@ public class APIs
      * @param puzzle
      * @return 
      */
-    public static ShuffledSource shuffle (Puzzle puzzle)
+    public static ShuffledSource shuffle (SourceFile src)
     {
-        return shuffle(puzzle, DEFAULT_PERCENT);
+        return shuffle(src, DEFAULT_PERCENT);
     }
 
     /**
      * 
-     * @param puzzle
+     * @param src
      * @param percentToRemove
      * @return 
      */
-    public static ShuffledSource shuffle (Puzzle puzzle, int percentToRemove)
+    public static ShuffledSource shuffle (SourceFile src, int percentToRemove)
     {
-        SourceFile src = puzzle.getSourceFile();
+        if (percentToRemove > MAX_TO_REMOVE_PERCENT)
+            percentToRemove = MAX_TO_REMOVE_PERCENT;
+        
+        int total = src.tokenCount();
         return getDefaultShuffler().getShuffler().shuffle(src,
-                                                          percentToRemove / 100 * src.tokenCount());
+                                                          (int)(percentToRemove / 100.0 * total));
     }
     
      // for testing
@@ -198,6 +286,7 @@ public class APIs
             throw new InternalException("Service must be started before being used");
     }
     
-    private static final int DEFAULT_PERCENT = 5;
+    private static final int MAX_TO_REMOVE_PERCENT = 80;
+    private static final int DEFAULT_PERCENT = 10;
 }
 

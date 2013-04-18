@@ -20,41 +20,55 @@
  */
 package edu.umb.cs.gui;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.ResourceBundle;
 
-import edu.umb.cs.demo.Demo;
-import edu.umb.cs.demo.DemoToken;
-
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
-import javafx.scene.control.TextArea;
+import javafx.scene.effect.InnerShadow;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import edu.umb.cs.gui.GUI.GameState;
+import edu.umb.cs.gui.screens.ConfirmRefreshBoard;
+import edu.umb.cs.gui.screens.ConfirmSkipScreen;
+import edu.umb.cs.gui.screens.CategoriesScreen;
+import edu.umb.cs.gui.screens.DifficultyScreen;
+import edu.umb.cs.gui.screens.PauseScreen;
+import javafx.event.EventType;
 
-/**
- * Merge model and View Here
- *
- */
+
 public class Controller implements Initializable{
-
+	
 	@FXML
 	private AnchorPane mainFrame;
 	@FXML 
-	private Pane legal_drag_zone;
-
-	//panels
-	@FXML
-	private Pane tokenBoard;
+	private static Pane legalDragZone;
 	@FXML
 	private static Pane tokenBay;
 	@FXML
-	private TextArea outputPane;
+	private static Pane outputPanel;
 
+	@FXML
+	private static Pane difficultyPane;
+	private static ImageView curDifficultyIcon;
+	
+	//timer
+	@FXML
+	private static Pane timer;
+	
 	//buttons
 	@FXML
 	private Button runButton;
@@ -65,132 +79,202 @@ public class Controller implements Initializable{
 	@FXML
 	private Button skipButton;
 	@FXML
-	private Button catalogButton;
-	@FXML
-	private Button difficultyButton;
+	private Button categoryButton;
 	@FXML
 	private Button resetBoardButton;
 	@FXML
 	private Button logoButton;
-
-
-	static boolean demoStart = false;		//DEMO remove for real implementation
-
-
-	/**
-	 * mhs to look into-- this may not be needed.  See initialize interface documentation.
-	 */
+	
+	private static LinkedList<Button> buttons;
+	
+	/**keep this current**/
+	private final String CURRENT_WEB_ADDRESS = "http://tokanagrammar.github.io/";
+	
+	private static HashMap<Integer, ImageView> imgViewTable;
+	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		System.out.println(this.getClass().getSimpleName() + ".initialize"); //See javadoc as this probably isn't necessary.
-		outputPane.appendText("Welcome to Tokanagrammar!\n");
+		System.out.println(this.getClass().getSimpleName() + ".initialize");
+		//Store all the buttons together.
+		buttons = new LinkedList<Button>();
+		buttons.add(runButton);
+		buttons.add(stopButton);
+		buttons.add(pauseButton);
+		buttons.add(skipButton);
+		buttons.add(categoryButton);
+		buttons.add(resetBoardButton);
+		buttons.add(logoButton);
+               
+		
+		//The default difficulty icon is a little less than "50"
+		Image defaultDiffImg = new Image(getClass().getResourceAsStream("/images/ui/secondaryScreens/difficulty4.fw.png"));
+		final ImageView imgView = new ImageView(defaultDiffImg);
+		setCurDifficultyIcon(imgView);
+		
+		imgViewTable = new HashMap<Integer, ImageView>();
+		imgViewTable.put(1, new ImageView());
+		for(int i=0; i < 10; i++){
+			Image img = new Image(DifficultyScreen.class.getResourceAsStream("/images/ui/secondaryScreens/difficulty" + i + ".fw.png"));
+			imgViewTable.put(i, new ImageView(img));
+		}
 	}
+	
+	public static ImageView getCurDifficultyIcon(){
+		return curDifficultyIcon;
+	}
+	
+	public static void setCurDifficultyIcon(final ImageView cdi){
+		
+		cdi.setFitWidth(64);
+		cdi.setFitHeight(40);
+		
+		cdi.setOnMouseEntered(new EventHandler <MouseEvent>() {
+			public void handle(MouseEvent event) {
+				InnerShadow innerShadow = new InnerShadow();
+				innerShadow.setOffsetX(1);
+				innerShadow.setOffsetY(1);
+				innerShadow.setChoke(0.3);
+				innerShadow.setColor(Color.rgb(255, 255, 153));
+				cdi.setEffect(innerShadow);
+				event.consume();
+			}
+		});
+		
+		cdi.setOnMouseExited(new EventHandler <MouseEvent>() {
+			public void handle(MouseEvent event) {
+				cdi.setEffect(new InnerShadow());
+				event.consume();
+			}
+		});
+		
+		cdi.setOnMousePressed(new EventHandler <MouseEvent>(){
+			@Override
+			public void handle(MouseEvent event) {
+				GameState gameState = GUI.getInstance().getCurGameState();
+				if(gameState.equals(GameState.INIT_GUI) || gameState.equals(GameState.START_GAME))
+					GUI.getInstance().pauseGame(new DifficultyScreen());
+			}
+		});
 
-	//try to access the tokenBay from outside
+		difficultyPane.getChildren().remove(getCurDifficultyIcon());
+		curDifficultyIcon = cdi;
+		difficultyPane.getChildren().add(cdi);
+	}
+	
+	
+	public static HashMap<Integer, ImageView> getImgViewTable(){
+		return imgViewTable;
+	}
+	public static Pane getOutputPane(){
+		return outputPanel;
+	}
+	public static Pane getLegalDragZone(){
+		return legalDragZone;
+	}
+	public static Pane getTimer(){
+		return timer;
+	}
+	public static Pane getDifficultyPane(){
+		return difficultyPane;
+	}
 	public static Pane getTokenBay(){
 		return tokenBay;
 	}
-
-
-	//--------------------------------------------------------------------------------
+	
+	/**
+	 * Convenience method to get buttons.
+	 * @return a list of this controller's buttons
+	 */
+	public static LinkedList<Button> getButtons(){
+		return buttons;
+	}
+	
+	//--------------------------------------------------------------------------
 	//GUI BUTTONS
-	//--------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
     /**
      * Called when the run button is fired.
      *
      * @param event the action event.
      */
 	public void runFired(ActionEvent event){
-		System.out.println("runFired");
+            System.out.println("compingling src");
+            GUI.getInstance().compileNewSource();
+//		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+//			GUI.getInstance().compileNewSource();
 	}
-
+	
     /**
      * Called when the stop button is fired.
-     *
+     * This should only be available when in GameState.Compiling
      * @param event the action event.
      */
 	public void stopFired(ActionEvent event){
-		System.out.println("stopFired");
+		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+			GUI.getInstance().stopCompile();
 	}
-
+	
     /**
      * Called when the pause button is fired.
      *
      * @param event the action event.
      */
 	public void pauseFired(ActionEvent event){
-		System.out.println("pauseFired");
-
-		//stop the timer if it's running
-
-		//blur current screen
-        
-		//open the 'continue?' dialog box
-
+		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+			GUI.getInstance().pauseGame(new PauseScreen());
 	}
-
+	
     /**
      * Called when the skip button is fired.
      *
      * @param event the action event.
      */
 	public void skipFired(ActionEvent event){
-		System.out.println("skipFired");
+		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+			GUI.getInstance().pauseGame(new ConfirmSkipScreen());
 	}
-
+	
     /**
-     * Called when the catalog button is fired.
+     * Called when the catagory button is fired.
      *
      * @param event the action event.
      */
 	public void categoryFired(ActionEvent event){
-		System.out.println("catalogFired");
+		GameState gameState = GUI.getInstance().getCurGameState();
+		if(gameState.equals(GameState.START_GAME) || gameState.equals(GameState.INIT_GUI) )
+			GUI.getInstance().pauseGame(new CategoriesScreen());
 	}
-
-    /**
-     * Called when the difficulty button is fired.
-     *
-     * @param event the action event.
-     */
-	public void difficultyFired(ActionEvent event){
-		System.out.println("difficultyFired");
-	}
-
+	
+	
     /**
      * Called when the resetBoard button is fired.
      *
      * @param event the action event.
      */
 	public void resetBoardFired(ActionEvent event){
-		System.out.println("resetBoardFired");
+		Text text = new Text("resetBoardFired");
+		GUI.getInstance().getOutputPanel().writeNodes(text);
+		
+		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+			GUI.getInstance().pauseGame(new ConfirmRefreshBoard());
 	}
-
+	
     /**
      * Called when the logoButton is fired.
      *
      * @param event the action event.
      */
 	public void logoFired(ActionEvent event){
-		System.out.println("logoFired");
+		
+		try {
+			URI uri = new URI(CURRENT_WEB_ADDRESS);
+			java.awt.Desktop.getDesktop().browse(uri);
 
-		demoStart = !demoStart; //toggle
-
-		if(demoStart){
-			outputPane.appendText("Starting 0.5 Demo\n");
-
-			Demo demo = new Demo();
-			LinkedList<DemoToken> rhsTokens = demo.getRemovedTokens();
-
-			//populate our demo tokens in the tokenBay
-			TokenSettler tokenSettler = new TokenSettler();
-
-			tokenSettler.settleRHSTokens(rhsTokens);
-
-
-		}else{
-			outputPane.appendText("Stopping 0.5 Demo\n");
-			//outputPane.clear();
+		} catch (URISyntaxException | IOException e) {
+			System.out.println("THROW::: make sure we handle browser error");
+			e.printStackTrace();
 		}
+		
 	}
 	//--------------------------------------------------------------------------------
 	//END GUI BUTTONS

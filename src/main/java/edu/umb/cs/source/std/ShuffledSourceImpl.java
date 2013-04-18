@@ -23,7 +23,7 @@ package edu.umb.cs.source.std;
 
 import edu.umb.cs.source.ShuffledSource;
 import edu.umb.cs.source.SourceFile;
-import edu.umb.cs.source.Token;
+import edu.umb.cs.source.SourceToken;
 import java.util.List;
 
 /**
@@ -34,9 +34,9 @@ public class ShuffledSourceImpl implements ShuffledSource
 {
     private final SourceFile original;
     private final SourceFile shuffled;
-    private final List<Token> removed;
+    private final List<SourceToken> removed;
     
-    public ShuffledSourceImpl(SourceFile original, SourceFile shuffled, List<Token> removed)
+    public ShuffledSourceImpl(SourceFile original, SourceFile shuffled, List<SourceToken> removed)
     {
         this.original = original;
         this.shuffled = shuffled;
@@ -56,7 +56,7 @@ public class ShuffledSourceImpl implements ShuffledSource
     }
 
     @Override
-    public List<Token> getRemovedTokens()
+    public List<SourceToken> getRemovedTokens()
     {
         return removed;
     }

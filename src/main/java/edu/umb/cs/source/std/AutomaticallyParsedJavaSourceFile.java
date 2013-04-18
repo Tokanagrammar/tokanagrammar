@@ -20,8 +20,11 @@
  */
 package edu.umb.cs.source.std;
 
+import edu.umb.cs.parser.BracingStyle;
+import edu.umb.cs.source.Output;
 import edu.umb.cs.source.SourceFile;
-import edu.umb.cs.source.Token;
+import edu.umb.cs.source.SourceToken;
+import edu.umb.cs.source.SourceTokenKind;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.*;
@@ -30,7 +33,6 @@ import java.util.*;
  * This represents a Java source file in a very naive way,
  * that is, 'token' is defined as a list of characters not separated by any 
  * whitespace.
- * 
  * 
  * @author Vy Thao Nguyen
  */
@@ -41,7 +43,7 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
      * Everything is treated as an identifer
      * (hence, they will be 'painted' with the same shade!)
      */
-    static class SimpleToken implements Token
+    static class SimpleToken implements SourceToken
     {
         private final String image;
         private final boolean isKeyword;
@@ -51,7 +53,7 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
             isKeyword = keywords.contains(img);
         }
         
-        // SourceFile interface 
+        // SourceToken interface 
         
         @Override
         public String image()
@@ -60,42 +62,19 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
         }
 
         @Override
-        public boolean isKeyWord()
+        public SourceTokenKind kind()
         {
-            return isKeyword;
+            return isKeyword ? SourceTokenKind.KEYWORD : SourceTokenKind.IDENTIFIER;
         }
 
-        @Override
-        public boolean isLiteral()
-        {
-            return false;
-        }
-
-        @Override
-        public boolean isIdentifier()
-        {
-            return !isKeyword;
-        }
-
-        @Override
-        public boolean isQuotedString()
-        {
-            return false;
-        }
- 
-        @Override
-        public boolean isEmpty()
-        {
-            return false;
-        }
         // Object interface
         
         @Override
         public boolean equals(Object other)
         {
-            if (other == null || !(other instanceof Token))
+            if (other == null || !(other instanceof SourceToken))
                 return false;
-            return image.equals(((Token)other).image());
+            return image.equals(((SourceToken)other).image());
         }
         
         @Override
@@ -112,10 +91,10 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
     }
     
     private final String path;
-    private final List<List<Token>> srcFile;
+    private final List<List<SourceToken>> srcFile;
     private final List<String> lines;
     private final int tokenCount;
-    private final Map<Token, Integer> stats;
+    private final Map<SourceToken, Integer> stats;
     private String rep = null;
     
     public AutomaticallyParsedJavaSourceFile(String path) throws FileNotFoundException
@@ -133,10 +112,10 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
         while (in.hasNextLine())
         {
             line = in.nextLine();
-            List<Token> wholeLine = new ArrayList<>();
+            List<SourceToken> wholeLine = new ArrayList<>();
             for (String tk : line.split("\\s++"))
             {
-                Token tok = new SimpleToken(tk);
+                SourceToken tok = new SimpleToken(tk);
                 if (stats.containsKey(tok))
                     stats.put(tok, stats.get(tok) + 1);
                 wholeLine.add(tok);
@@ -151,13 +130,26 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
     // --- SourceFile states ---
     
     @Override
+    public BracingStyle getStyle()
+    {
+        // null for unknown style
+        return null;
+    }
+    
+    @Override
     public String getLine(int line)
     {
         return lines.get(line);
     }
 
     @Override
-    public Token getToken(int line, int position)
+    public List<SourceToken> getTokens(int line)
+    {
+        return srcFile.get(line);
+    }
+    
+    @Override
+    public SourceToken getToken(int line, int position)
     {
         return srcFile.get(line).get(position);
     }
@@ -181,17 +173,23 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
     }
 
     @Override
-    public Map<Token, Integer> getStatistic()
+    public Map<SourceToken, Integer> getStatistic()
     {
         return stats;
     }
 
     @Override
-    public String compileAndExecute()
+    public Output compileAndExecute()
     {
         throw new UnsupportedOperationException("Not supported yet.");
     }
     
+    @Override
+    public String getClassName()
+    {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
     @Override
     public String toString()
     {
@@ -204,9 +202,9 @@ public class AutomaticallyParsedJavaSourceFile implements SourceFile
     String buildFromSrc()
     {
         StringBuilder bd = new StringBuilder();
-        for (List<Token> line : srcFile)
+        for (List<SourceToken> line : srcFile)
         {
-            for(Token tk : line)
+            for(SourceToken tk : line)
                 bd.append(tk.image()).append(' ');
             bd.append('\n');
         }

@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.umb.cs</groupId>
     <artifactId>tokanagrammar</artifactId>
-    <version>0.5</version>
+    <version>0.8</version>
     <name>tokanagrammar</name>
     <packaging>jar</packaging>
     <url>http://tokanagrammar.github.com/</url>
@@ -40,11 +40,15 @@
             <name>ObjectDB Repository</name>
             <url>http://m2.objectdb.com</url>
         </repository>
+        <repository>
+            <id>google-releases</id>
+            <name>Google Releases</name>
+            <url>https://oss.sonatype.org/content/repositories/google-releases</url>
+      </repository>
     </repositories>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- place holder -->
     </properties>
 
   <!-- dependencies -->
@@ -60,12 +64,17 @@
             <artifactId>javafx</artifactId>
             <version>2.2.7</version>
         </dependency>
-		<dependency>
+        <dependency>
             <groupId>com.objectdb</groupId>
             <artifactId>objectdb</artifactId>
             <version>2.4.7</version>
         </dependency>
-	</dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava-io</artifactId>
+            <version>r03</version>
+        </dependency>	
+    </dependencies>
 
   <!-- rules for build -->
     <build>
@@ -159,6 +168,7 @@
                     </execution>
                 </executions>
             </plugin>
+        <!-- Check license-header in source files -->
             <plugin>
                 <groupId>com.mycila.maven-license-plugin</groupId>
                 <artifactId>maven-license-plugin</artifactId>
@@ -188,6 +198,8 @@
                         <exclude>target/generated-sources/javacc/GrammarParser/*.java</exclude>
                         <exclude>target/**</exclude>
                         <exclude>puzzles/**</exclude>
+                        <exclude>config/version.txt</exclude>
+                        <exclude>tmp/**</exclude>
                     </excludes>
                     <mapping>
                         <g>JAVADOC_STYLE</g>

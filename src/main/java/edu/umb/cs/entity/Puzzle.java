@@ -21,10 +21,13 @@
 
 package edu.umb.cs.entity;
 
+import edu.umb.cs.parser.BracingStyle;
+import edu.umb.cs.parser.ParseException;
 import edu.umb.cs.source.Language;
 import edu.umb.cs.source.SourceFile;
 import edu.umb.cs.source.SourceFiles;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -32,6 +35,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.persistence.*;
 
 /**
@@ -49,7 +54,9 @@ public class Puzzle implements Serializable
     @GeneratedValue (strategy = GenerationType.AUTO)
     private long id;
     
-    private transient SourceFile srcFile;
+    @Transient
+    private SourceFile srcFile;
+    @Transient
     private final Language langType = Language.JAVA;  //TODO: Only support JAVA for now
                                                       // This should be settable later
                                                       // when we do support other languages
@@ -80,7 +87,8 @@ public class Puzzle implements Serializable
         
     }
     
-    public Puzzle (String path, String expRes, String mdata) throws IOException
+    public Puzzle (String path, String expRes, String mdata)
+            throws IOException, ParseException
     {
         File file = new File(path);
         if (!file.exists())
@@ -92,12 +100,11 @@ public class Puzzle implements Serializable
         metaData = mdata;
         games = new HashSet<Game>();
         hints = new HashSet<Hint>();
-        srcFile = SourceFiles.getSourceFile(path, langType);
     }
     
-    public SourceFile getSourceFile()
+    public SourceFile getSourceFile(BracingStyle style) throws ParseException, FileNotFoundException
     {
-        return srcFile;
+        return SourceFiles.getSourceFile(new File(filePath), langType, style);
     }
 
     public void addGame(Game g)

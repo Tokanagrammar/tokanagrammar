@@ -20,6 +20,8 @@
  */
 package edu.umb.cs.source;
 
+import edu.umb.cs.parser.BracingStyle;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,15 +31,29 @@ import java.util.Map;
  */
 public interface SourceFile
 {
+    /**
+     * 
+     * @return name of the outer most class
+     */
+    String getClassName();
+    
+    BracingStyle getStyle();
+
+    /**
+     * @deprecate
+     * Use List<SourceToken> getTokens(line) instead
+     */
     String getLine(int line);
 
+    List<SourceToken> getTokens(int line);
+    
     /**
      * 
      * @param line
      * @param position
      * @return the token at the given line and position
      */
-    Token getToken(int line, int position);
+    SourceToken getToken(int line, int position);
     
     /**
      * 
@@ -58,13 +74,13 @@ public interface SourceFile
     int lineCount();
     
     /**
-     * Each entry == [Token --> Number of occurrences ]
-     * @return a Token-to-Occurrences mapping
+     * Each entry == [SourceToken --> Number of occurrences ]
+     * @return a SourceToken-to-Occurrences mapping
      */
-    Map<Token, Integer> getStatistic();
+    Map<SourceToken, Integer> getStatistic();
     
     /**
      * compile the source, execute and return the output
      */
-    String compileAndExecute();
+    Output compileAndExecute();
 }

@@ -21,11 +21,7 @@
 
 package edu.umb.cs.source.std;
 
-import edu.umb.cs.source.ShuffledSource;
-import edu.umb.cs.source.Shuffler;
-import edu.umb.cs.source.SourceFile;
-import edu.umb.cs.source.Token;
-import edu.umb.cs.source.std.AutomaticallyParsedJavaSourceFile.SimpleToken;
+import edu.umb.cs.source.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -36,15 +32,6 @@ import java.util.Random;
  */
 public class SimpleShuffler implements Shuffler
 {
-    static final Token EMPTY = new SimpleToken("<REMOVED>")
-    {
-        @Override
-        public boolean isEmpty()
-        {
-            return true;
-        }
-    };
-    
     public static final SimpleShuffler INSTANCE = new SimpleShuffler();
 
     @Override
@@ -55,29 +42,39 @@ public class SimpleShuffler implements Shuffler
         toRemove = Math.min(toRemove, src.tokenCount());
         int hasRemoved = 0;
 
-        List<List<Token>>  newSrc = buildList(src);
-        List<Token> removed = new ArrayList<>(toRemove);
-        
+        List<List<SourceToken>>  newSrc = buildList(src);
+        List<SourceToken> removed = new ArrayList<>(toRemove);
+
         while (hasRemoved != toRemove)
         {
             int lineIndex = rand.nextInt(newSrc.size());
+            
+            // if line is empty (no token to remove) move on)
+            if (newSrc.get(lineIndex).isEmpty())
+                continue;
             int tokenIndex = rand.nextInt(newSrc.get(lineIndex).size());
             
-            ArrayList<Token> line = (ArrayList<Token>)newSrc.get(lineIndex);
-            Token token = line.get(tokenIndex);
+            ArrayList<SourceToken> line = (ArrayList<SourceToken>)newSrc.get(lineIndex);
+            SourceToken token = line.get(tokenIndex);
             
-            // already removed.
-            if (token.isEmpty())
+            // already removed. or is quite spaces
+            // (it is not a good idea to remove white spaces)
+            SourceTokenKind kind = token.kind();
+            if (kind == SourceTokenKind.EMPTY
+                    || kind == SourceTokenKind.SPACE
+                    || kind == SourceTokenKind.TAB)
                 continue;
             
             removed.add(token);
-            newSrc.get(lineIndex).set(tokenIndex, EMPTY);
+            newSrc.get(lineIndex).set(tokenIndex, EmptyToken.INSTANCE);
             ++hasRemoved;
         }
         
-        SourceFile shuffled = new ArtificialSourceFile(src.lineCount(),
-                                                       src.tokenCount(),
-                                                       newSrc);
+        SourceFile shuffled = new JavaSourceFile("UNKNOWN_PATH",
+                                                 newSrc,
+                                                 src.tokenCount(),
+                                                 src.getStyle(),
+                                                 src.getClassName());
 
         return new ShuffledSourceImpl(src, shuffled, removed);
     }
@@ -88,15 +85,15 @@ public class SimpleShuffler implements Shuffler
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    static List<List<Token>> buildList(SourceFile src)
+    static List<List<SourceToken>> buildList(SourceFile src)
     {
         int lineC = src.lineCount();
-        ArrayList<List<Token>> ret = new ArrayList<>(lineC);
-        
+        ArrayList<List<SourceToken>> ret = new ArrayList<>(lineC);
+            
         for (int n = 0; n < lineC; ++n)
         {
             int tkCount = src.tokenCount(n);
-            ArrayList<Token> line = new ArrayList<>(tkCount);
+            ArrayList<SourceToken> line = new ArrayList<>(tkCount);
             for (int m = 0; m < tkCount; ++m)
                 line.add((src.getToken(n, m)));
             ret.add(line);

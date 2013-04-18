@@ -20,10 +20,11 @@
  */
 package edu.umb.cs.source.std;
 
+import edu.umb.cs.parser.BracingStyle;
+import edu.umb.cs.source.Output;
 import edu.umb.cs.source.SourceFile;
-import edu.umb.cs.source.Token;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
+import edu.umb.cs.source.SourceToken;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,29 +35,69 @@ public class JavaSourceFile implements SourceFile
 {
 
     private final String path;
-    private final ArrayList<ArrayList<Token>> srcFile;
+    private final List<List<SourceToken>> srcFile;
     private final int tokenCount;
-    private final Map<Token, Integer> stats;
+    private final Map<SourceToken, Integer> stats;
+    private final BracingStyle style;
+    private final String outerMost;
+
+    private Output output = null;
     
     public JavaSourceFile(String path,
-                          ArrayList<ArrayList<Token>> tokens,
-                          int tokenCount)
-            throws FileNotFoundException
+                          List<List<SourceToken>> tokens,
+                          int tokenCount,
+                          BracingStyle style,
+                          String outer)
     {
         this.path = path;
         this.srcFile = tokens;
         this.tokenCount = tokenCount;
         stats = buildStats(srcFile);
+        this.style = style;
+        outerMost = outer;
+    }
+    
+    // Object interface
+    @Override
+    public String toString()
+    {
+        StringBuilder bd = new StringBuilder();
+        bd.append("PATH = " ).append(path).append('\n');
+        bd.append("SOURCE starts here: \n--------------\n");
+        for (List<SourceToken> line : srcFile)
+        {
+            for (SourceToken tk : line)
+            {
+                bd.append(tk.image());
+            }
+            bd.append('\n');
+        }
+        
+        return bd.toString();
+    }
+    
+    // SourceFile interface
+    
+    @Override
+    public BracingStyle getStyle()
+    {
+        return style;
     }
     
     @Override
     public String getLine(int line)
     {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return srcFile.get(line).toString();
     }
 
     @Override
-    public Token getToken(int line, int position)
+    public List<SourceToken> getTokens(int line)
+    {
+        return srcFile.get(line);
+    }
+
+    @Override
+    public SourceToken getToken(int line, int position)
     {
         return srcFile.get(line).get(position);
     }
@@ -80,19 +121,28 @@ public class JavaSourceFile implements SourceFile
     }
 
     @Override
-    public Map<Token, Integer> getStatistic()
+    public Map<SourceToken, Integer> getStatistic()
     {
         return stats;
     }
 
     @Override
-    public String compileAndExecute()
+    public Output compileAndExecute()
     {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return output == null
+                ? output = Utils.compile(srcFile, outerMost)
+                : output;
     }
 
-    private static Map<Token, Integer> buildStats(ArrayList<ArrayList<Token>> srcFile)
+    @Override
+    public String getClassName()
     {
-        throw new UnsupportedOperationException();
+        return outerMost;
+    }
+    
+    private static Map<SourceToken, Integer> buildStats(List<List<SourceToken>> srcFile)
+    {
+        return null;
+        //throw new UnsupportedOperationException();
     }
 }
