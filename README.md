@@ -1,4 +1,4 @@
-Release 1.0.be
+Release 1.0.beta
 =============
 
 tokanagrammar- Release repository
