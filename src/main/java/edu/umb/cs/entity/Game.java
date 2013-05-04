@@ -101,10 +101,6 @@ public class Game
         }
         
         Game other = (Game) obj;
-        if (this.id != other.id)
-        {
-            return false;
-        }
-        return true;
+        return id == other.id;
     }
 }

@@ -23,6 +23,9 @@ package edu.umb.cs.gui;
 
 
 import edu.umb.cs.source.SourceToken;
+import edu.umb.cs.source.SourceTokenKind;
+import edu.umb.cs.source.std.SourceTokenBase;
+
 import java.util.LinkedList;
 
 import javafx.beans.property.DoubleProperty;
@@ -34,11 +37,7 @@ import javafx.geometry.Point2D;
 import javafx.scene.effect.Glow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.*;
 import javafx.scene.layout.Pane;
 
 /**
@@ -52,12 +51,14 @@ public class RHSIconizedToken extends IconizedToken{
 
 	/**The dynamically created image representation of a token**/
 	private Image image;
-	/**The original token**/
+	/**The original SourceToken**/
 	private SourceToken token;
-	/**Assigned by order in which this iToken has arrived in the token bay.**/
+	/**Assigned by order in which this IconizedToken (iToken) has arrived in the token bay.**/
 	private int index;
 	/**The view of the image on the GameBoard.**/
 	private ImageView imgView;
+
+	static DataFormat dataFormat = new DataFormat("RHSIconizedToken");
 
 	public RHSIconizedToken(Image image, SourceToken token, int index){
 		this.image = image;
@@ -78,6 +79,9 @@ public class RHSIconizedToken extends IconizedToken{
 	public int getIndex(){
 		return index;
 	}
+	static public DataFormat getDataFormat(){
+		return dataFormat;
+	}
 	
 	/**
 	 * The original location used for setting and tracking the new location of a
@@ -90,56 +94,39 @@ public class RHSIconizedToken extends IconizedToken{
 		this.startY = startY;
 	}
 
-//	/**
-//	 * Compare two iTokens to see if they're equal.  They are never equal.
-//	 */
-//	public boolean equals(Object obj) {
-//		if(obj instanceof RHSIconizedToken){
-//			return 	token.equals(((RHSIconizedToken) obj).getDemoToken()) && 
-//					index == (((RHSIconizedToken) obj).getIndex());
-//		}
-//		else return false;
-//	}
-//
-//	public int hashCode() {
-//		return token.hashCode();
-//	}
 
-	
 	public String tokenLookupInfo(){
-		return token.kind() + " " + token.image() + " " + index;
+		return token.kind() + ":::" + token.image() + ":::" + index;
 	}
 
 	protected ImageView initImageView(Image img){
-		
-		final Pane ldzPane = GameBoard.getInstance().getLDZpane();
-
-		final ObjectProperty<Point2D> dragAnchor = new SimpleObjectProperty<>();
 
 		final ImageView imgView = new ImageView(img);
 		
-		final DoubleProperty initX = new SimpleDoubleProperty();
-		final DoubleProperty initY = new SimpleDoubleProperty();
-
-		final DoubleProperty dragX = new SimpleDoubleProperty();
-		final DoubleProperty dragY = new SimpleDoubleProperty();
-		
-		final DoubleProperty newXPosition = new SimpleDoubleProperty();
-		final DoubleProperty newYPosition = new SimpleDoubleProperty();
-		
-		final int buffer = 3;
+//		final Pane ldzPane = GameBoard.getInstance().getLDZpane();
+//
+//		final ObjectProperty<Point2D> dragAnchor = new SimpleObjectProperty<>();
+//
+//		final DoubleProperty initX = new SimpleDoubleProperty();
+//		final DoubleProperty initY = new SimpleDoubleProperty();
+//
+//		final DoubleProperty dragX = new SimpleDoubleProperty();
+//		final DoubleProperty dragY = new SimpleDoubleProperty();
+//		
+//		final DoubleProperty newXPosition = new SimpleDoubleProperty();
+//		final DoubleProperty newYPosition = new SimpleDoubleProperty();
+//		
+//		final int buffer = 3;
 		
 		imgView.setOnDragDetected(new EventHandler<MouseEvent>() {
 		    public void handle(MouseEvent event) {
-		    	
-		    	//System.out.println("**setOnDragDetected PROBLEM OF NOT BEING ABLE TO DRAG HERE**");
-		    	//System.out.println("******************* MAJOR PROBLEM -- NO VISUAL D&D!*********");
-		    	//ALL COMMENTED CODE CAN BE UNCOMMENTED WHEN THIS ISSUE IS FIXED
 		    	ClipboardContent content = new ClipboardContent();
+		    	//content.put(dataFormat, RHSIconizedToken.this);
 		    	content.putString(RHSIconizedToken.this.tokenLookupInfo());
-		    	//makes mouse unusable when set to anything but NONE??!!
 		    	Dragboard db = imgView.startDragAndDrop(TransferMode.ANY); 
+		    	//db.setDragView(image, 7, 7);	//Java 8 only -- perfect soln to visual d&d though :(
 		    	db.setContent(content); 
+		    	System.err.println(db.getString());
 		    	event.consume();
 		    }
 		});
@@ -179,32 +166,22 @@ public class RHSIconizedToken extends IconizedToken{
 		imgView.setOnDragDone(new EventHandler<DragEvent>() {
 		    public void handle(DragEvent event) {
 		    
-//		    	LinkedList<RHSIconizedToken> iTokens = GameBoard.getInstance().getTokenBayItokens();
+		    	LinkedList<RHSIconizedToken> iTokens = (LinkedList<RHSIconizedToken>) GameBoard.getInstance().getTokenBayItokens();
+		    	
 		        if (event.getTransferMode() == TransferMode.MOVE) {
-//		            RHSIconizedToken element = iTokens.remove(index);
-//		            iTokens.add(index, new RHSIconizedToken(element.getImage(), new SourceToken("removed", "removed"), index));
-		            imgView.setVisible(false); 
-
-//		            System.out.println("\n\nDrag Done, Remove and Replace RHS token with \"empty\" token: ");
-//		            System.out.println("Check Data Structures:  ");
-//		            System.out.println("RHSIconizedTokens: (make sure replaced!)" + iTokens);
-//		            
-//		            System.out.println("\n[[[PASS]]]\n\n");
+		            RHSIconizedToken element = iTokens.remove(index);
+		            
+		            iTokens.add(index, new RHSIconizedToken(element.getImage(), element.getSourceToken(), index));
+		            imgView.setVisible(false);
 		            
 		            GameBoard theGameBoard = GameBoard.getInstance();
 		            GUI theGUI = GUI.getInstance();
-		            //was this the last one removed from the rhs?
-		            //if so we need to signal the CompileButton to be turned on!
-		            //if(
+		            
 		            if(theGameBoard.isRHSempty()){
-//		            	System.out.println("RHS EMPTY");
 		            	theGUI.enableCompileButton();
 		            }else{
-//		            	System.out.println("RHS NOT empty");
 		            	theGUI.disableCompileButton();
 		            }
-		            	
-		        
 		        }
 		        event.consume();
 		    }

@@ -20,6 +20,8 @@
  */
 package edu.umb.cs.gui;
 
+import edu.umb.cs.gui.GUI.GameState;
+import edu.umb.cs.gui.screens.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,7 +29,6 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ResourceBundle;
-
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -40,15 +41,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
-import edu.umb.cs.gui.GUI.GameState;
-import edu.umb.cs.gui.screens.ConfirmRefreshBoard;
-import edu.umb.cs.gui.screens.ConfirmSkipScreen;
-import edu.umb.cs.gui.screens.CategoriesScreen;
-import edu.umb.cs.gui.screens.DifficultyScreen;
-import edu.umb.cs.gui.screens.PauseScreen;
-import javafx.event.EventType;
-
+import edu.umb.cs.gui.screens.SettingsScreen;
 
 public class Controller implements Initializable{
 	
@@ -84,7 +77,9 @@ public class Controller implements Initializable{
 	private Button resetBoardButton;
 	@FXML
 	private Button logoButton;
-	
+	@FXML
+	private Button settingsButton;
+        
 	private static LinkedList<Button> buttons;
 	
 	/**keep this current**/
@@ -104,16 +99,14 @@ public class Controller implements Initializable{
 		buttons.add(categoryButton);
 		buttons.add(resetBoardButton);
 		buttons.add(logoButton);
-               
 		
-		//The default difficulty icon is a little less than "50"
-		Image defaultDiffImg = new Image(getClass().getResourceAsStream("/images/ui/secondaryScreens/difficulty4.fw.png"));
+		Image defaultDiffImg = new Image(getClass().getResourceAsStream("/images/ui/secondaryScreens/difficulty5.fw.png"));
 		final ImageView imgView = new ImageView(defaultDiffImg);
 		setCurDifficultyIcon(imgView);
 		
 		imgViewTable = new HashMap<Integer, ImageView>();
 		imgViewTable.put(1, new ImageView());
-		for(int i=0; i < 10; i++){
+		for(int i=0; i < 11; i++){
 			Image img = new Image(DifficultyScreen.class.getResourceAsStream("/images/ui/secondaryScreens/difficulty" + i + ".fw.png"));
 			imgViewTable.put(i, new ImageView(img));
 		}
@@ -125,7 +118,7 @@ public class Controller implements Initializable{
 	
 	public static void setCurDifficultyIcon(final ImageView cdi){
 		
-		cdi.setFitWidth(64);
+		cdi.setFitWidth(80);
 		cdi.setFitHeight(40);
 		
 		cdi.setOnMouseEntered(new EventHandler <MouseEvent>() {
@@ -151,7 +144,9 @@ public class Controller implements Initializable{
 			@Override
 			public void handle(MouseEvent event) {
 				GameState gameState = GUI.getInstance().getCurGameState();
-				if(gameState.equals(GameState.INIT_GUI) || gameState.equals(GameState.START_GAME))
+				if(gameState.equals(	GameState.INIT_GUI) || 
+										gameState.equals(GameState.START_GAME) ||
+										gameState.equals(GameState.FULL_LHS))
 					GUI.getInstance().pauseGame(new DifficultyScreen());
 			}
 		});
@@ -198,10 +193,9 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void runFired(ActionEvent event){
-            System.out.println("compingling src");
-            GUI.getInstance().compileNewSource();
-//		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
-//			GUI.getInstance().compileNewSource();
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME) || gs.equals(GameState.FULL_LHS))
+			GUI.getInstance().compileNewSource();
 	}
 	
     /**
@@ -210,7 +204,8 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void stopFired(ActionEvent event){
-		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME) || gs.equals(GameState.FULL_LHS))
 			GUI.getInstance().stopCompile();
 	}
 	
@@ -220,7 +215,9 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void pauseFired(ActionEvent event){
-		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME)
+				|| gs.equals(GameState.FULL_LHS))
 			GUI.getInstance().pauseGame(new PauseScreen());
 	}
 	
@@ -230,7 +227,9 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void skipFired(ActionEvent event){
-		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME)
+				|| gs.equals(GameState.FULL_LHS))
 			GUI.getInstance().pauseGame(new ConfirmSkipScreen());
 	}
 	
@@ -240,8 +239,10 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void categoryFired(ActionEvent event){
-		GameState gameState = GUI.getInstance().getCurGameState();
-		if(gameState.equals(GameState.START_GAME) || gameState.equals(GameState.INIT_GUI) )
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME)
+				|| gs.equals(GameState.FULL_LHS)
+				|| gs.equals(GameState.INIT_GUI))
 			GUI.getInstance().pauseGame(new CategoriesScreen());
 	}
 	
@@ -252,10 +253,9 @@ public class Controller implements Initializable{
      * @param event the action event.
      */
 	public void resetBoardFired(ActionEvent event){
-		Text text = new Text("resetBoardFired");
-		GUI.getInstance().getOutputPanel().writeNodes(text);
-		
-		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
+		GameState gs = GUI.getInstance().getCurGameState();
+		if(	gs.equals(GameState.START_GAME)
+				|| gs.equals(GameState.FULL_LHS))
 			GUI.getInstance().pauseGame(new ConfirmRefreshBoard());
 	}
 	
@@ -275,6 +275,15 @@ public class Controller implements Initializable{
 			e.printStackTrace();
 		}
 		
+	}
+       
+    /**
+     * Called when the settings button is fired.
+     *
+     * @param event the action event.
+     */
+	public void settingsFired(ActionEvent event){
+			GUI.getInstance().pauseGame(new SettingsScreen());
 	}
 	//--------------------------------------------------------------------------------
 	//END GUI BUTTONS

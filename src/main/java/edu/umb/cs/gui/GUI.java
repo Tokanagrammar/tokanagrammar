@@ -32,10 +32,15 @@ import edu.umb.cs.source.SourceFile;
 import edu.umb.cs.source.SourceToken;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -49,10 +54,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
-import javax.swing.ButtonGroup;
-import javax.swing.JComponent;
-import javax.swing.JOptionPane;
-import javax.swing.JRadioButton;
+import javax.swing.*;
 
 /**
  * Handle game states and also work as a main GUI API.
@@ -62,7 +64,10 @@ public class GUI {
 
 	public enum GameState {INIT_GUI, START_GAME, FULL_LHS, COMPILING};
 
-        private static GameBoard legalDragZone;
+        // maximum time allowed for compilation
+        private static long TIME_OUT = 10000;
+
+        private static GameBoard gameBoard;
 	private static GUITimer timer;
 	private static OutputPanel outputPanel;
 	private static GameState curGameState;
@@ -76,10 +81,13 @@ public class GUI {
         private List<CategoryDescriptor> categories;
 
         private List<SourceToken> tokenBayTokens;
+        
 	private List<SourceToken> tokenBoardTokens;
 	
 	private List<CategoryDescriptor> curCategories;
         
+        private static BracingStyle curBracingStyle = BracingStyle.ALLMAN;
+
         /** Used to blur screen on pausing*/
 	private static boolean init  = false;
 	
@@ -100,11 +108,14 @@ public class GUI {
 	 * @return
 	 */
 	public static GUI getInstance(){
-                if(!init){
+		if(!init){
 			setupActiveButtonsTable();
+			gameBoard = GameBoard.getInstance();
+			outputPanel = OutputPanel.getInstance();
+			timer = GUITimer.getInstance();
 			init = true;
 		}
-		
+
 		return gui;
 	}
 
@@ -119,81 +130,92 @@ public class GUI {
 	 */
 	public void gameState_initGUI(){
 
-                inGame = false;
+		inGame = false;
 		curGameState = GameState.INIT_GUI;
 		blurOff();
-		legalDragZone = GameBoard.getInstance();
-		outputPanel = OutputPanel.getInstance();
-		timer = GUITimer.getInstance();
-                
-                printWelcomeMessage();
 
-                initButtons(activeButtons.get(curGameState));
-	}
+		printWelcomeMessage();
 
-
-	/**
-	 * Start the game
-	 * gameState is "startGame"
-	 * The user has selected a category (or categories) and pressed "start".
-	 */
-	public void gameState_startGame(){
-                curGameState = GameState.START_GAME;
-                blurOff();
-                //initialization of new start of game
-		if(!inGame)
-                {
-                    // TODO: have a radio button in the main windows
-                    // for easy switching back and forth
-                    // ask for style: 
-                    getBracingStyle();
-                    
-                    // retrieve a puzzle from back end
-                    // TODO: This method should be called with an argument
-                    // being the set of categories,
-                    // we can do: p = APIs.picOne(<set of categories>);
-                    SourceFile orig = null;
-                    try
-                    {
-                        curPuzzle = edu.umb.cs.api.APIs.getRandomPuzzle();
-                        // TODO: let user choose the bracing style
-                        orig = curPuzzle.getSourceFile(style);
-                    }
-                    catch (Exception ex)
-                    {
-                        ex.printStackTrace();
-                        outputPanel.compilerMessage("Error retrieving puzzles: " + ex.getMessage());
-                    }
-
-                    if (orig != null)
-                    {
-                        currentSource = edu.umb.cs.api.APIs.shuffle(orig, curDifficulty);
-                        
-                        tokenBayTokens = currentSource.getRemovedTokens();
-                        
-                        legalDragZone.initTokenBoard(currentSource.getShuffledSource());
-                        legalDragZone.initTokenBay(RHSTokenIconizer.iconizeTokens(tokenBayTokens));
-                        
-                        outputPanel.clear();
-			printCategoryAndDifficultyMessage();
-                        
-                        // Some message on the puzzle
-                        if (orig != null)
-                        {
-                            outputPanel.compilerMessage("Total tokens: " + orig.tokenCount());
-                            outputPanel.compilerMessage("Removed: " + currentSource.getRemovedTokens().size()
-                                                            + "(" + curDifficulty + "%)");
-                        }
-                    }
-
-		}
-		
-		timer.start();
-		inGame = true;
 		initButtons(activeButtons.get(curGameState));
 	}
 
-        //--------------------------------------------------------------------------
+    /**
+     * Start the game gameState is "startGame" The user has selected a category
+     * (or categories) and pressed "start".
+     */
+    public void gameState_startGame(boolean newGame)
+    {
+        curGameState = GameState.START_GAME;
+        blurOff();
+
+        //initialization of new start of game
+        if (!inGame)
+        {
+            if (newGame || curPuzzle == null || currentSource == null)
+            {
+                // retrieve a puzzle from back end
+                // TODO: This method should be called with an argument
+                // being the set of categories,
+                // we can do: p = APIs.picOne(<set of categories>);
+                SourceFile orig = null;
+                try
+                {
+                    curPuzzle = edu.umb.cs.api.APIs.getRandomPuzzle();
+                    orig = curPuzzle.getSourceFile(curBracingStyle);
+                }
+                catch (Exception ex)
+                {
+                    ex.printStackTrace();
+                    outputPanel.compilerMessage("Error retrieving puzzles: " + ex.getMessage());
+                }
+
+                if (orig != null)
+                {
+                    currentSource = edu.umb.cs.api.APIs.shuffle(orig, curDifficulty);
+
+                    tokenBayTokens = currentSource.getRemovedTokens();
+
+                    gameBoard.initTokenBoard(currentSource.getShuffledSource());
+                    gameBoard.initTokenBay(RHSTokenIconizer.iconizeTokens(tokenBayTokens));
+
+                    outputPanel.clear();
+                    printCategoryAndDifficultyMessage();
+
+                    // Some message on the puzzle
+                    if (orig != null)
+                    {
+                        outputPanel.infoMessage("Total tokens: " + orig.tokenCount());
+                        outputPanel.infoMessage("Removed: " + currentSource.getRemovedTokens().size()
+                                                + "(" + curDifficulty + "%)");
+                    }
+                }
+            }
+            else
+            {
+                tokenBayTokens = currentSource.getRemovedTokens();
+
+                    gameBoard.initTokenBoard(currentSource.getShuffledSource());
+                    gameBoard.initTokenBay(RHSTokenIconizer.iconizeTokens(tokenBayTokens));
+
+                    //outputPanel.clear();
+                    //printCategoryAndDifficultyMessage();
+
+            }
+        }
+
+        if (GameBoard.getInstance().isRHSempty())
+        {
+            enableCompileButton();
+            curGameState = GameState.FULL_LHS;
+        }
+
+        timer.start();
+        inGame = true;
+
+        initButtons(activeButtons.get(curGameState));
+    }
+
+	//--------------------------------------------------------------------------
 	//UTIL
 	
 	/**
@@ -241,8 +263,8 @@ public class GUI {
 	public void resetGame(){
                 LHSTokenIconizer.resetIndex();
                 RHSTokenIconizer.resetIndex();
-		legalDragZone.resetTokenBay();
-		legalDragZone.resetTokenBoard();
+		gameBoard.resetTokenBay();
+		gameBoard.resetTokenBoard();
 		timer.reset();
 		outputPanel.clear();
 	}
@@ -254,18 +276,21 @@ public class GUI {
 	 * 
 	 * GameState is Refresh
 	 */
-	public void refreshGame(){
-		legalDragZone.resetTokenBay();
-		legalDragZone.resetTokenBoard();
-		inGame = false;
-		gameState_startGame();
-	}
+        public void refreshGame()
+        {													//TODO @mhs this is same as reset for now.
+            LHSTokenIconizer.resetIndex();
+            RHSTokenIconizer.resetIndex();
+            gameBoard.resetTokenBay();
+            gameBoard.resetTokenBoard();
+            inGame = false;
+            gameState_startGame(false);
+        }
 	
 	/**
 	 * Skips the current board and goes to the next. 							//TODO backend
 	 */
 	public void skipPuzzle(){
-		System.out.println("<<<Back end for getting the next puzzle>>>");			//TODO backend
+		System.out.println("<<<Back end for getting the next puzzle>>>");		//TODO backend
 		
 		outputPanel.clear();
 
@@ -273,7 +298,7 @@ public class GUI {
 		
 		resetGame();
 		inGame = false;
-		gameState_startGame();
+		gameState_startGame(true);
 	}
 	
 	/**
@@ -296,13 +321,10 @@ public class GUI {
 	 * was enabled, then pressed.
 	 */
 	public void compileNewSource(){												//TODO Backend specialty!  
-		List<LHSIconizedToken> tokenList;									//For now, just print formated source code!
-		GameBoard gb = GameBoard.getInstance();
-		
+		List<LHSIconizedToken> tokenList;										//For now, just print formated source code!
+		GameBoard gb = GameBoard.getInstance();		
 		tokenList = gb.getTokenBoardItokens();
-		
-		//make sure the RHS is empty -- it should since we control the comp. btn
-//		
+
                 System.out.println("\n\nCompiling New Source Code.");
 
                 //Stop the timer to save the user precious ms while
@@ -311,38 +333,60 @@ public class GUI {
 
                 // build the content of the file
                 // (ie., just dump it to a string)
-                StringBuilder bd = new StringBuilder();
+                final StringBuilder bd = new StringBuilder();
                 for (LHSIconizedToken tk : tokenList)
                 {
                     bd.append(tk.getSourceToken().image());
                 }
                 enableStopButton();
-                new Thread(new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        blurOn();
-                        javax.swing.JOptionPane.showMessageDialog(null,
-                                                                  "Compiling, please wait!");
-                    }   
-                }).start();
                 
-                Output out = edu.umb.cs.api.APIs.compile(bd.toString(),
-                                                         currentSource.getOrinalSource().getClassName());
-                blurOff();
-                disableStopButton();
-                if(out.isError()){
+                final JFrame waitPopup = new WaitWindow();
+                waitPopup.setVisible(true);
+                compileTask.src = bd.toString();
+                new Thread(compileTask).start();
+                try
+                {
+                    // wait for compilation
+                    synchronized(COMPILE_LOCK)
+                    {
+                        COMPILE_LOCK.wait(TIME_OUT);
+                    }
+                    System.out.println("done compiling:");
+                    Output out = compileTask.out;
+                    if (out == null)
+                    {
+                        waitPopup.dispose();
+                        blurOff();
+                        outputPanel.compilerMessage("Compilation took too long! Please try again!");
+                    }
+                    else if (out.isError())
+                    {
                         outputPanel.compilerMessage("The program has the following errors:");
                         outputPanel.compilerMessage(out.getOuput());
                         timer.start();
-                }else{
-                        outputPanel.writeNodes(new Text("Congratulation! You successfully solved the puzzle!"));
-                        outputPanel.writeNodes(new Text("The output is: \"" + out.getOuput() + "\""));
+                    }
+                    else
+                    {
+                        outputPanel.infoMessage("Congratulations! You have successfully solved the puzzle!");
+                        outputPanel.infoMessage("The output is:\n-----");
+                        outputPanel.outputText(out.getOuput());
+                        outputPanel.infoMessage("-----");
                         // TODO: record score
                         timer.stop();
+                    }
+                    waitPopup.dispose();
+                    disableStopButton();
+                    blurOff();
                 }
-		
+                catch (InterruptedException ex)
+                {
+                    outputPanel.compilerMessage("Something went wrong!");
+                    ex.printStackTrace();
+                    
+                    // recover
+                    waitPopup.dispose();
+                    blurOff();
+                }
 	}
 	
 	/**
@@ -366,9 +410,9 @@ public class GUI {
 	 * Use this as a fail safe to stop compiling (avoids stack overflow etc).
 	 */
 	public void stopCompile(){
-		Text text = new Text("Stop button needs to be hooked up -- enable WHILE COMPILING ONLY");
-		System.out.println("Stop button needs to be hooked up -- enable WHILE COMPILING ONLY");
-		outputPanel.writeNodes(text);
+//		Text text = new Text("Stop button needs to be hooked up -- enable WHILE COMPILING ONLY");
+//		System.out.println("Stop button needs to be hooked up -- enable WHILE COMPILING ONLY");
+//		outputPanel.writeNodes(text);
 		
 		//Last, send the user back to the full LHS pseudo state and restart the timer.
 		initButtons(activeButtons.get(GameState.FULL_LHS));
@@ -379,70 +423,13 @@ public class GUI {
 	//--------------------------------------------------------------------------
 	//Static message printing
 	
-	private void printCategoryAndDifficultyMessage(){
-		/*
-		 * Message to user	"Category <categories> has been selected on difficulty <difficulty>
-		 * 					 Hints: <hints>
-		 */
-		String concatCategories = "";
-		
-		Text text;
-		if(curCategories.size() > 1)
-			text = new Text("Categories Selected: ");
-		else
-			text = new Text("Category Selected: ");
-		for(int i=0; i< curCategories.size(); i++)
-			concatCategories += (curCategories.get(i) + " ");
-		
-		Label categoryText = new Label(concatCategories);
-		categoryText.setStyle(	"-fx-font-size: 14; -fx-text-fill: rgb(153, 153, 50);" );
-		Text text2 = new Text("Difficulty: ");
-		
-		DropShadow dropShadow = new DropShadow();
-		dropShadow.setColor(Color.GRAY);
-		dropShadow.setRadius(30);
-		dropShadow.setHeight(30);
-		dropShadow.setBlurType(BlurType.ONE_PASS_BOX);
-		Label difficultyText = new Label(curDifficulty + "");
-		Label difficultyRank = new Label("");
-		//difficulty 0-31 easy 32-65 med 66-99 hard
-		if(curDifficulty >= 0 && curDifficulty <= 31){
-			difficultyRank.setText("(EASY)");
-			difficultyRank.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 255, 38);" );
-			difficultyText.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 255, 38);" );
-		}
-		else if(curDifficulty >= 32 && curDifficulty <= 65){
-			difficultyRank.setText("(MEDIUM)");
-			difficultyRank.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(253, 148, 37);" );
-			difficultyText.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(253, 148, 37);" );
-		}
-		else if(curDifficulty >= 66 && curDifficulty <= 89){
-			difficultyRank.setText("(HARD)");
-			difficultyRank.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 0, 0);" );
-			difficultyText.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 0, 0);" );
-		}
-		else if(curDifficulty >= 90 && curDifficulty <= 100){
-			difficultyRank.setText("(INSANE)");
-			difficultyRank.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 0, 0);" );
-			difficultyText.setStyle(	"-fx-font-size: 18; -fx-text-fill: rgb(255, 0, 0);" );
-		}
-		difficultyRank.setEffect(dropShadow);
-		difficultyText.setEffect(dropShadow);
-		
-		Text text3 = new Text("Hint: ");
-//		String hint = curPuzzle.getHints().get(0);
-                String hint = "NO HINT available";
-                Label hintText = new Label(" < " + hint + " > ");
-		hintText.setStyle(	"-fx-font-size: 14; -fx-text-fill: rgb(153, 153, 50);" );
-		outputPanel.writeNodes(text, categoryText);
-		outputPanel.writeNodes(text2, difficultyText, difficultyRank);
-		outputPanel.writeNodes(text3, hintText);
-	}
 	
 	private void printWelcomeMessage(){
+		
 		Text welcomeText = new Text("Welcome to Tokanagrammar, Java Edition! ");
 		welcomeText.setFont(new Font(14));
 		outputPanel.writeNodes(welcomeText);
+		
 		Text categoryText = new Text("Please select a category ");
 		categoryText.setFont(new Font(14));
 		Image img = new Image(OutputPanel.class.
@@ -452,6 +439,63 @@ public class GUI {
 		text.setFont(new Font(14));
 		outputPanel.writeNodes(categoryText, imgView, text);
 	}
+	
+	private void printCategoryAndDifficultyMessage(){
+		/*
+		 * Message to user	"Category <categories> has been selected on difficulty <difficulty>
+		 * 					 Hints: <hints>
+		 */
+		String concatCategories = "";
+		
+		Text text;
+
+		String style = "-fx-font-size: 18; -fx-text-fill: rgb(0, 178, 45);";
+		
+		if(curCategories.size() > 1)
+			text = new Text("Categories: ");
+		else
+			text = new Text("Category: ");
+		for(int i=0; i< curCategories.size(); i++)
+			concatCategories += (curCategories.get(i) + " ");
+		
+		Label categoryText = new Label(concatCategories);
+		categoryText.setStyle(style);
+		Text text2 = new Text("Difficulty: ");
+		
+		Label difficultyText = new Label(curDifficulty + "");
+		Label difficultyRank = new Label("");
+		
+		if(curDifficulty >= 0 && curDifficulty <= 32){
+			difficultyRank.setText("(EASY)");
+			difficultyRank.setStyle(style);
+			difficultyText.setStyle(style);
+		}
+		else if(curDifficulty >= 33 && curDifficulty <= 64){
+			difficultyRank.setText("(MEDIUM)");
+			difficultyRank.setStyle(style);
+			difficultyText.setStyle(style);
+		}
+		else if(curDifficulty >= 65 && curDifficulty <= 90){
+			difficultyRank.setText("(HARD)");
+			difficultyRank.setStyle(style);
+			difficultyText.setStyle(style);
+		}
+		else if(curDifficulty >= 91 && curDifficulty <= 100){
+			difficultyRank.setText("(INSANE)");
+			difficultyRank.setStyle(style);
+			difficultyText.setStyle(style);
+		}
+		
+		Text text3 = new Text("Hint: ");
+//		String hint = curPuzzle.getHints().get(0);                
+                String hint = "NO HINT available";
+                Label hintText = new Label(" < " + hint + " > ");
+		hintText.setStyle(style);
+		outputPanel.writeNodes(text, categoryText);
+		outputPanel.writeNodes(text2, difficultyText, difficultyRank);
+		outputPanel.writeNodes(text3, hintText);
+	}
+
 	
 	
 	//--------------------------------------------------------------------------
@@ -497,7 +541,7 @@ public class GUI {
 	 * Get the LegalDragZone
 	 */
 	public GameBoard getLegalDragZone(){
-		return legalDragZone;
+		return gameBoard;
 	}
 
 	/**
@@ -506,14 +550,16 @@ public class GUI {
 	public List<RHSIconizedToken> getRHSIconizedTokens(){
 		return GameBoard.getInstance().getTokenBayItokens();
 	}
-	
-	/**
-	 * Get the current LHS tokens
-	 */
-	public List<LHSIconizedToken> getLHSIconizedTokens(){
-		return GameBoard.getInstance().getTokenBoardItokens();
-	}
-	
+
+        public BracingStyle getCurBracingStyle()
+        {
+            return curBracingStyle;
+        }
+
+        public void setCurBracingStyle(BracingStyle style)
+        {
+            curBracingStyle = style;
+        }
 	/**
 	 * Set the current difficulty
 	 */
@@ -564,7 +610,6 @@ public class GUI {
 		
 		for(Button button: buttons){
 			String buttonID = button.getId();
-			System.out.println("ENABLING BUTTON: " + buttonID);
 			for(String str: buttonNames)
 				if(buttonID.equals(str)){
 					button.setDisable(false);
@@ -622,47 +667,64 @@ public class GUI {
 		activeButtons.put(GameState.COMPILING, compilingBtns);
 	}
         
-        private static BracingStyle style;
-        private static BracingStyle getBracingStyle()
+        private static class WaitWindow extends JFrame
         {
-            // allman
-            JRadioButton allman = new JRadioButton("ALLMAN");
-            allman.addActionListener(new AllmanListener());
-            
-            // K&R
-            JRadioButton kr = new JRadioButton("K&R");
-            kr.addActionListener(new KRListener());;
+            WaitWindow()
+            {
+                super("Compiling!");
+                
+                setSize(200, 100);
+                // TODO: replace the JLabel with an animated pic here
+                JPanel pn = new JPanel();
+                
+                pn.add(hourGlass);
+                this.add(pn);
+                this.setLocationRelativeTo(null);
+                this.setAlwaysOnTop(true);
+                this.setVisible(false);
+                // do not let the user close the window
+                // this will be disposed once the compilation is done
+                this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+                this.setResizable(false);
+            }
+        }
+        
+        private static class CompileTask implements Runnable
+        {
+            Output out;
+            String src;
+            CompileTask(String src)
+            {
+                this.src = src;
+            }
+            @Override
+            public void run()
+            {
+                out = edu.umb.cs.api.APIs.compile(src,
+                                                  currentSource.getOrinalSource().getClassName());
+                
+                synchronized(COMPILE_LOCK)
+                {
+                    COMPILE_LOCK.notifyAll();
+                }
+            }   
+        }
  
-            ButtonGroup group = new ButtonGroup();
-            group.add(allman);
-            group.add(kr);
-            group.setSelected(allman.getModel(), true);
-            style = BracingStyle.ALLMAN;
-            final JComponent[] ops = new JComponent[]
-            {
-                allman,
-                kr
-            };
-            
-            javax.swing.JOptionPane.showMessageDialog(null, ops, "Choose a bracing style", JOptionPane.PLAIN_MESSAGE);
-            return style;
-        }
-        
-        private static class AllmanListener implements ActionListener
+        private static final JLabel hourGlass = getHourGlass();
+        private static final Object COMPILE_LOCK = 0;
+        private static final CompileTask compileTask = new CompileTask(null);
+        private static final String WAIT_ICON_PATH = "/images/ui/hourglass.gif";
+        private static JLabel getHourGlass()
         {
-            @Override
-            public void actionPerformed(ActionEvent e)
+            try
             {
-                style = BracingStyle.ALLMAN;
-            }   
-        }
-        
-        private static class KRListener implements ActionListener
-        {
-            @Override
-            public void actionPerformed(ActionEvent e)
+                return new JLabel(new ImageIcon(GUI.class.getResource(WAIT_ICON_PATH)));
+            }
+            catch (Exception ex)
             {
-                style = BracingStyle.K_AND_R;
-            }   
+                System.out.println("Image not found!");
+                ex.printStackTrace();
+                return new JLabel("PLEASE WAIT"); // use text instead
+            }
         }
 }

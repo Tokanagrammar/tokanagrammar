@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.umb.cs</groupId>
     <artifactId>tokanagrammar</artifactId>
-    <version>0.8</version>
+    <version>1.0.beta</version>
     <name>tokanagrammar</name>
     <packaging>jar</packaging>
     <url>http://tokanagrammar.github.com/</url>
@@ -73,7 +73,7 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava-io</artifactId>
             <version>r03</version>
-        </dependency>	
+        </dependency>
     </dependencies>
 
   <!-- rules for build -->
@@ -198,8 +198,9 @@
                         <exclude>target/generated-sources/javacc/GrammarParser/*.java</exclude>
                         <exclude>target/**</exclude>
                         <exclude>puzzles/**</exclude>
-                        <exclude>config/version.txt</exclude>
+                        <exclude>config/*.txt</exclude>
                         <exclude>tmp/**</exclude>
+                        <exclude>**/Thumbs.db</exclude>
                     </excludes>
                     <mapping>
                         <g>JAVADOC_STYLE</g>

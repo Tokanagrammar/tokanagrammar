@@ -53,17 +53,18 @@ public class OutputPanel{
 
 	{
 		final ScrollPane scrollPane = new ScrollPane();
-		scrollPane.setMinWidth(550);
-		scrollPane.setMinHeight(84);
+		scrollPane.setMinWidth(545);
+		scrollPane.setMinHeight(117);
 		scrollPane.setContent(vBox);
 		scrollPane.setVvalue(scrollPane.getVmax());
-		scrollPane.setMaxHeight(84);
-		scrollPane.setMaxWidth(550);
+
+		scrollPane.setMaxWidth(545);
+		scrollPane.setMaxHeight(117);
 
 		pane = Controller.getOutputPane();
 		pane.getChildren().add(scrollPane);
 
-		pane.setMaxHeight(84);
+		pane.setMaxHeight(117);
 		vBox.setSpacing(8);
 		vBox.setPadding(new Insets(3,3,3,3));
 
@@ -99,15 +100,30 @@ public class OutputPanel{
 	 * Compiler Message
 	 * Used to format actual compiler messages.
 	 */
-	public void compilerMessage(String str){
-		Text t = new Text(str);
-		t.setFont(new Font(12));
-		t.setWrappingWidth(530);
-		t.setFill(Color.RED);
-		t.setText(str);
-		vBox.getChildren().add(t);
+	public void compilerMessage(String str)
+        {
+            plainMessage(str, Color.RED);
 	}
 
+        private void plainMessage(String str, Color c)
+        {
+            Text t = new Text(str);
+            t.setFont(new Font(12));
+            t.setWrappingWidth(530);
+            t.setFill(c);
+            t.setText(str);
+            vBox.getChildren().add(t);
+            rePosScroll = true;
+        }
+
+        public void outputText(String str)
+        {
+            plainMessage(str, Color.CHOCOLATE);
+        }
+        public void infoMessage (String str)
+        {
+            plainMessage(str, Color.BLUE);
+        }
 
 	/**
 	 * You can write ImageView, Text, Labels, and other Nodes to the
@@ -128,6 +144,7 @@ public class OutputPanel{
 			}
 			hBox.getChildren().add(node);
 		}
+		rePosScroll = true;
 		vBox.getChildren().add(hBox);
 		rePosScroll = true;
 	}

@@ -57,8 +57,7 @@ public class DifficultyScreen extends SecondaryScreen{
 	/**the current image in the imgDisplay**/
 	static ImageView curImgInDisplay;
 	private static int curDifficultyLevel;
-	private final static int DIVISOR = 11;
-	private final static int DEFAULT_DIFFICULTY = 10; 
+	private final static int DIVISOR = 10;
 
 
 	@Override
@@ -77,13 +76,13 @@ public class DifficultyScreen extends SecondaryScreen{
 		imgDisplay = DifficultyScreenController.getImgDisplay();
 		textPane = DifficultyScreenController.getTextPane();
 		slider = DifficultyScreenController.getSlider();
-		//Display the text about how the difficulty selector works.
+		//Display the text about how the difficulty works.
 		textPane.setPadding(new Insets(5, 5, 5, 5));
 		textPane.setMaxWidth(textPane.getWidth());
 		
 		String message = 	"Increasing the difficulty will remove more " +
 							"tokens from the original source file.";
-		//Remind the user he'll have to restart the game if difficulty sel here.
+		//Remind the user will have to restart the game if difficulty sel here.
 		if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME))
 			message += " You will have to reset the board to do this now.";
 		
@@ -98,8 +97,8 @@ public class DifficultyScreen extends SecondaryScreen{
 		textPane.getChildren().add(label);
 		
 		//When the slider moves on a certain increment, switch the image.
-		slider.setBlockIncrement(DIVISOR);
-		slider.setMajorTickUnit(DIVISOR);
+		slider.setBlockIncrement(10);
+		slider.setMajorTickUnit(10);
 
 		//The icons used to display the difficulty are created with the MAIN
 		//CONTROLLER, since it's responsible for displaying the difficultyLevel.
@@ -107,7 +106,7 @@ public class DifficultyScreen extends SecondaryScreen{
 		
 		//If it's the first run, we know that the needle should be at about 50%.
 		if(firstRun){
-			curImgInDisplay = imgViewTable.get(DEFAULT_DIFFICULTY/DIVISOR);
+			curImgInDisplay = imgViewTable.get(GUI.getInstance().getCurDifficulty()/DIVISOR);
 			slider.setValue(50);
 			firstRun = false;
 		}else{
@@ -136,7 +135,8 @@ public class DifficultyScreen extends SecondaryScreen{
 	public static void executeSetBtnFired(){
 		
 		GameState gameState = GUI.getInstance().getCurGameState();
-		
+		// TODO: reset difficulty level => same puzzle (not new one)
+                
 		//*******Sets the difficultyLevel in in GUI*******
 		GUI.getInstance().setCurDifficulty(curDifficultyLevel);
 		
@@ -145,7 +145,7 @@ public class DifficultyScreen extends SecondaryScreen{
 			Text difficultyText = new Text("Difficulty Level Set to: ");
 			Text difficultyNumberText = new Text(curDifficultyLevel + "");
 			difficultyNumberText.setFont(Font.font("Comic Sans MS", FontWeight.BOLD ,14));
-			difficultyNumberText.setFill(Color.rgb(153, 153, 255));
+			difficultyNumberText.setFill(Color.rgb(0, 178, 45));
 			difficultyNumberText.setFont(new Font(14));
 			
 			OutputPanel.getInstance().writeNodes(difficultyText, difficultyNumberText);
@@ -154,11 +154,10 @@ public class DifficultyScreen extends SecondaryScreen{
                         tearDown();
 			GUI.getInstance().resetGame();
 			GUI.getInstance().gameState_initGUI();
-			GUI.getInstance().gameState_startGame();
+			GUI.getInstance().gameState_startGame(true);
 		}
 		
 		GUI.getInstance().blurOff();
-		
 		
 		//update the icon on the main screen to reflect the recent change
 		//note that this does not use the original image view, we need to create
@@ -167,8 +166,6 @@ public class DifficultyScreen extends SecondaryScreen{
 		Image img = orig.getImage();
 		ImageView temp = new ImageView(img);
 		Controller.setCurDifficultyIcon(temp);
-		
-
 	}
 
 	

@@ -23,6 +23,10 @@ package edu.umb.cs;
 
 import edu.umb.cs.api.APIs;
 import edu.umb.cs.gui.GUI;
+import edu.umb.cs.gui.GUI.GameState;
+import edu.umb.cs.gui.screens.ConfirmCloseScreen;
+import edu.umb.cs.gui.screens.PauseScreen;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.application.Application;
@@ -37,18 +41,22 @@ import javafx.stage.WindowEvent;
 
 public class Tokanagrammar extends Application{
 
-
 	private static final String TITLE = "Tokanagrammar " + APIs.getVersion();
+	
+	private static final int DEFAULT_DIFFICULTY = 50;
         
-        static AnchorPane page;
-        
+    private static AnchorPane page;
+    
+    /**The width and height of the screen is fixed**/
 	private static final int FINAL_WIDTH = 886;
 	private static final int FINAL_HEIGHT = 689;
+	
 	/**The main scene**/
-        private static Scene scene;
+    private static Scene scene;
 	/**We need access to primaryStage to assign parent to other stages**/
 	private static Stage primaryStage;
-        
+    
+	/*Big Bang*/
     public static void main(String[] args) {
         Application.launch(Tokanagrammar.class, (java.lang.String[]) null);
     }
@@ -80,23 +88,38 @@ public class Tokanagrammar extends Application{
             primaryStage.sizeToScene();
             primaryStage.initStyle(StageStyle.DECORATED);
 
-            //clean up db etc
-            // TODO: add confirmation dialogue?
+            
             primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>(){
 				@Override
 				public void handle(WindowEvent event) {
-                                        // stop all services properly
-					APIs.stop();
+					//first disable the window close -- we'll do it another way.
+					event.consume();
+					//now show the window
+					ConfirmCloseScreen cc = new ConfirmCloseScreen();
+					cc.setupScreen();
+					if(GUI.getInstance().getCurGameState().equals(GameState.START_GAME)){
+						GUI.getInstance().getTimer().pause();
+						GUI.getInstance().blurOn();
+					}
 				}
+            });
+            
+            primaryStage.setOnHidden(new EventHandler<WindowEvent>(){
+				@Override
+				public void handle(WindowEvent event) {
+					// stop all services properly
+					APIs.stop();
+                    // kill all lingering thread(s), if any
+                    Runtime.getRuntime().exit(0);
+				}
+            	
             });
             primaryStage.show();
             
             GUI gui = GUI.getInstance();
             gui.setCurCategories(APIs.getCategories());
-            gui.setCurDifficulty(50); // default?
-            
-            // TODO? Why another call to getInstance()???
-            GUI.getInstance().gameState_initGUI();
+            gui.setCurDifficulty(DEFAULT_DIFFICULTY);
+            gui.gameState_initGUI();
             
         } catch (Exception ex) {
             Logger.getLogger(Tokanagrammar.class.getName()).
