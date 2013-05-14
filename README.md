@@ -1,3 +1,6 @@
+Release 1.0
+=============
+
 tokanagrammar- Release repository
 =============
 
