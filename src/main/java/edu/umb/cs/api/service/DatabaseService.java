@@ -115,9 +115,11 @@ public class DatabaseService
         try
         {
             t.begin();
+            em.createQuery("DELETE FROM Hint h").executeUpdate();
             em.createQuery("DELETE FROM Puzzle p").executeUpdate();
-            em.createQuery("DELETE FROM User u").executeUpdate();
+            em.createQuery("DELETE FROM Category c").executeUpdate();
             em.createQuery("DELETE FROM Game g").executeUpdate();
+            em.createQuery("DELETE FROM User u").executeUpdate();
             success = true;
         }
         finally
@@ -161,17 +163,21 @@ public class DatabaseService
      * @param metaData meta data
      * @return true if the source file can be found and added correctly
      */
-    public static boolean addPuzzle(String filePath, String expResult, String metaData, Hint... hints)
+    public static boolean addPuzzle(String filePath, String expResult, String catName, List<String> hints)
     {
+        System.out.println("adding to category: " + catName);
         boolean success = false;
         EntityTransaction t = em.getTransaction();
         try
         {
-            //TODO: take category into account
             t.begin();
-            Puzzle p = new Puzzle(filePath, expResult, metaData);
-            for (Hint h : hints)
-                p.addHint(h);
+            Puzzle p = new Puzzle(filePath, expResult, catName);
+            if (hints != null)
+                for (String hint : hints)
+                {
+                    Hint h = new Hint(p, hint);
+                    p.addHint(h);
+                }
             em.persist(p);
             success = true;
         }
@@ -281,5 +287,35 @@ public class DatabaseService
     public static void dropDatabase(String name)
     {
         
+    }
+
+    public static Category findOrCreateCategory(String catName)
+    {
+        Category category = getCategory(catName);
+        
+        if (category == null)
+        {
+            category = new Category(catName);
+            em.persist(category);   
+        }
+        
+        return category;
+    }
+    
+    /**
+     * 
+     * @param catName category name
+     * @return a category of the given name if exists; null otherwise.
+     */
+    public static Category getCategory(String catName)
+    {
+        List<Category> exist = em.createQuery("SELECT c FROM Category c WHERE c.name = :name", Category.class)
+                       .setParameter("name", catName)
+                       .getResultList();
+        
+        if (exist.size() > 0)
+            return exist.get(0);
+        else 
+            return null;
     }
 }

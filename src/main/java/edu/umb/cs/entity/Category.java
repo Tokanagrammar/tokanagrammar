@@ -39,10 +39,8 @@ public class Category
     
     private String name;
     
-    private String description;
-    
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.REMOVE},
-               fetch = FetchType.EAGER, mappedBy = "categoy")
+               fetch = FetchType.EAGER, mappedBy = "category")
     private Set<Puzzle> puzzles;
     
     public Category()
@@ -50,10 +48,9 @@ public class Category
         
     }
     
-    public Category(String name, String desc)
+    public Category(String name)
     {
         this.name = name.toUpperCase();
-        this.description = desc;
         this.puzzles = new HashSet<>();
     }
     
@@ -61,17 +58,18 @@ public class Category
     {
         return this.name;
     }
-    
-    public String getDescription()
-    {
-        return this.description;
-    }
+
     
     public void addPuzzle(Puzzle p)
     {
         this.puzzles.add(p);
     }
     
+    public int puzzlesCount()
+    {
+        return puzzles.size();
+    }
+
     public Set<Puzzle> getPuzzles()
     {
         return Collections.unmodifiableSet(puzzles);
@@ -92,5 +90,10 @@ public class Category
         
         Category catOther = (Category) obj;
         return name.equals(catOther.name);
+    }
+    
+    public String toString()
+    {
+        return getName();
     }
 }

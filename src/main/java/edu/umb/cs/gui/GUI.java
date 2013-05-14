@@ -22,39 +22,28 @@
 package edu.umb.cs.gui;
 
 import edu.umb.cs.Tokanagrammar;
-import edu.umb.cs.api.CategoryDescriptor;
+import edu.umb.cs.api.APIs;
+import edu.umb.cs.entity.Category;
+import edu.umb.cs.entity.Hint;
 import edu.umb.cs.entity.Puzzle;
 import edu.umb.cs.gui.screens.SecondaryScreen;
 import edu.umb.cs.parser.BracingStyle;
-import edu.umb.cs.source.Output;
-import edu.umb.cs.source.ShuffledSource;
-import edu.umb.cs.source.SourceFile;
-import edu.umb.cs.source.SourceToken;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javafx.application.Platform;
+import edu.umb.cs.source.*;
+import java.util.*;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.effect.BlurType;
 import javafx.scene.effect.BoxBlur;
-import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
-import javax.swing.*;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 /**
  * Handle game states and also work as a main GUI API.
@@ -78,14 +67,18 @@ public class GUI {
 	
 	private int curDifficulty;
 
-        private List<CategoryDescriptor> categories;
+        private List<Category> categories;
 
         private List<SourceToken> tokenBayTokens;
         
 	private List<SourceToken> tokenBoardTokens;
 	
-	private List<CategoryDescriptor> curCategories;
+	private List<Category> curCategories;
         
+        private Iterator<Puzzle> puzzlesIter;
+
+        private Set<Puzzle> puzzles;
+
         private static BracingStyle curBracingStyle = BracingStyle.ALLMAN;
 
         /** Used to blur screen on pausing*/
@@ -97,8 +90,11 @@ public class GUI {
 
         private static Puzzle curPuzzle;
         
+        private static int curHint = 0;
+
         private static ShuffledSource currentSource;
         
+        private static final Font defaultFont = new Font(14);
 	private GUI(){}
         
         // -----
@@ -153,14 +149,13 @@ public class GUI {
         {
             if (newGame || curPuzzle == null || currentSource == null)
             {
-                // retrieve a puzzle from back end
-                // TODO: This method should be called with an argument
-                // being the set of categories,
-                // we can do: p = APIs.picOne(<set of categories>);
                 SourceFile orig = null;
                 try
                 {
-                    curPuzzle = edu.umb.cs.api.APIs.getRandomPuzzle();
+                    // wrap-around to the beginning of the collection
+                    if (!puzzlesIter.hasNext())
+                        puzzlesIter = puzzles.iterator();
+                    curPuzzle = puzzlesIter.next();
                     orig = curPuzzle.getSourceFile(curBracingStyle);
                 }
                 catch (Exception ex)
@@ -184,8 +179,8 @@ public class GUI {
                     // Some message on the puzzle
                     if (orig != null)
                     {
-                        outputPanel.infoMessage("Total tokens: " + orig.tokenCount());
-                        outputPanel.infoMessage("Removed: " + currentSource.getRemovedTokens().size()
+                        outputPanel.infoMessage("Total (removable) tokens: " + currentSource.totalRemovable());
+                        outputPanel.infoMessage("Removed: " + currentSource.removedCount()
                                                 + "(" + curDifficulty + "%)");
                     }
                 }
@@ -336,7 +331,9 @@ public class GUI {
                 final StringBuilder bd = new StringBuilder();
                 for (LHSIconizedToken tk : tokenList)
                 {
-                    bd.append(tk.getSourceToken().image());
+                    SourceToken srcTk = tk.getSourceToken();
+                    if (srcTk.kind() != SourceTokenKind.EMPTY)
+                        bd.append(tk.getSourceToken().image());
                 }
                 enableStopButton();
                 
@@ -367,10 +364,17 @@ public class GUI {
                     }
                     else
                     {
-                        outputPanel.infoMessage("Congratulations! You have successfully solved the puzzle!");
-                        outputPanel.infoMessage("The output is:\n-----");
-                        outputPanel.outputText(out.getOuput());
-                        outputPanel.infoMessage("-----");
+                        if (out.getOuput().equals(curPuzzle.getExpectedOutput()))
+                        {
+                            outputPanel.infoMessage("Congratulations! You have successfully solved the puzzle!");
+                            outputPanel.infoMessage("The output is:\n-----");
+                            outputPanel.outputText(out.getOuput());
+                            outputPanel.infoMessage("-----");
+                        }
+                        else
+                        {
+                            outputPanel.compilerMessage("Your program's output does NOT match the expected! Please try again");
+                        }
                         // TODO: record score
                         timer.stop();
                     }
@@ -427,16 +431,16 @@ public class GUI {
 	private void printWelcomeMessage(){
 		
 		Text welcomeText = new Text("Welcome to Tokanagrammar, Java Edition! ");
-		welcomeText.setFont(new Font(14));
+		welcomeText.setFont(defaultFont);
 		outputPanel.writeNodes(welcomeText);
 		
 		Text categoryText = new Text("Please select a category ");
-		categoryText.setFont(new Font(14));
+		categoryText.setFont(defaultFont);
 		Image img = new Image(OutputPanel.class.
 				getResourceAsStream("/images/ui/categoryButton_console_display_size.fw.png"));
 		ImageView imgView = new ImageView(img);
 		Text text = new Text(" to continue.");
-		text.setFont(new Font(14));
+		text.setFont(defaultFont);
 		outputPanel.writeNodes(categoryText, imgView, text);
 	}
 	
@@ -445,55 +449,41 @@ public class GUI {
 		 * Message to user	"Category <categories> has been selected on difficulty <difficulty>
 		 * 					 Hints: <hints>
 		 */
-		String concatCategories = "";
-		
-		Text text;
-
-		String style = "-fx-font-size: 18; -fx-text-fill: rgb(0, 178, 45);";
-		
-		if(curCategories.size() > 1)
-			text = new Text("Categories: ");
-		else
-			text = new Text("Category: ");
+		StringBuilder concatCategories = new StringBuilder();
 		for(int i=0; i< curCategories.size(); i++)
-			concatCategories += (curCategories.get(i) + " ");
+                    concatCategories.append(' ').append(curCategories.get(i)).append(',');
+                Label categoryText;
+                // chop off the last comma
+                int len = concatCategories.length();
+                if (len != 0
+                        && concatCategories.charAt(len - 1) == ',')
+                    categoryText = new Label(concatCategories.substring(0, len -1));
+                else
+                    categoryText = new Label(concatCategories.toString());
+                outputPanel.infoMessage((categories.size() > 1
+                                            ? "Categories: "
+                                            : "Category")
+                                        +concatCategories);
+                
+                StringBuilder diffBd = new StringBuilder("Difficulty: ");
+                diffBd.append(curDifficulty);
+                if(curDifficulty >= 0 && curDifficulty <= 32)
+                    diffBd.append("(EASY)");
+		else if(curDifficulty >= 33 && curDifficulty <= 64)
+                    diffBd.append("(MEDIUM)");
+		else if(curDifficulty >= 65 && curDifficulty <= 90)
+                    diffBd.append("(HARD)");
+		else if(curDifficulty >= 91 && curDifficulty <= 100)
+                    diffBd.append("(INSANE)");
+                outputPanel.infoMessage(diffBd.toString());
 		
-		Label categoryText = new Label(concatCategories);
-		categoryText.setStyle(style);
-		Text text2 = new Text("Difficulty: ");
-		
-		Label difficultyText = new Label(curDifficulty + "");
-		Label difficultyRank = new Label("");
-		
-		if(curDifficulty >= 0 && curDifficulty <= 32){
-			difficultyRank.setText("(EASY)");
-			difficultyRank.setStyle(style);
-			difficultyText.setStyle(style);
-		}
-		else if(curDifficulty >= 33 && curDifficulty <= 64){
-			difficultyRank.setText("(MEDIUM)");
-			difficultyRank.setStyle(style);
-			difficultyText.setStyle(style);
-		}
-		else if(curDifficulty >= 65 && curDifficulty <= 90){
-			difficultyRank.setText("(HARD)");
-			difficultyRank.setStyle(style);
-			difficultyText.setStyle(style);
-		}
-		else if(curDifficulty >= 91 && curDifficulty <= 100){
-			difficultyRank.setText("(INSANE)");
-			difficultyRank.setStyle(style);
-			difficultyText.setStyle(style);
-		}
-		
-		Text text3 = new Text("Hint: ");
-//		String hint = curPuzzle.getHints().get(0);                
-                String hint = "NO HINT available";
-                Label hintText = new Label(" < " + hint + " > ");
-		hintText.setStyle(style);
-		outputPanel.writeNodes(text, categoryText);
-		outputPanel.writeNodes(text2, difficultyText, difficultyRank);
-		outputPanel.writeNodes(text3, hintText);
+                StringBuilder hintsBd = new StringBuilder("Hint: ");
+                
+                List<Hint> hints = curPuzzle.getHints();
+                hintsBd.append(hints.isEmpty()
+                                 ? "<NO hints available!>"
+                                 :curPuzzle.getHints().get(curHint).getHintContent());
+                outputPanel.infoMessage(hintsBd.toString());
 	}
 
 	
@@ -519,7 +509,7 @@ public class GUI {
 	/**
 	 * Get the current categories being played
 	 */
-	public List<CategoryDescriptor> getCurCategories(){
+	public List<Category> getCurCategories(){
 		return curCategories;
 	}
 	
@@ -570,17 +560,28 @@ public class GUI {
 	/**
 	 * Set the current categories being played.
 	 */
-	public void setCurCategories(List<CategoryDescriptor> categories){
+	public void setCurCategories(List<Category> categories){
 		this.curCategories = categories;
+                puzzles = new HashSet<Puzzle>();
+                for (Category c : categories)
+                    puzzles.addAll(c.getPuzzles());
+                
+                puzzlesIter = puzzles.iterator();
 	}
 	
 	/**
 	 * Set the AVAILABLE categories
 	 */
-	public void setAvailableCategories(List<CategoryDescriptor> categories){
+	public void setAvailableCategories(List<Category> categories){
 		this.categories = categories;
 	}
 	
+        public List<Category> getAvailableCategories()
+        {
+            if (categories == null)
+                categories = APIs.getCategories();
+            return categories;
+        }
 	/**
 	 * Sets the tokenBay tokens
 	 * Used by external API

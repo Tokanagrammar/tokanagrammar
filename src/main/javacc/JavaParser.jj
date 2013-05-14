@@ -230,6 +230,8 @@ TOKEN:
 | < PERCENT: "%" >
 | < PLUS_ASSIGN: "+=" >
 | < STAR: "*" >
+| < LT: "<" >
+| < GE: ">=" >
 }
 
 // Separators (these could be combined with the reserved words)
@@ -279,6 +281,15 @@ TOKEN:
 }
 
 
+// Meta data 
+TOKEN:
+{
+  // a block of meta data consists of 3 lines (3 meta_data_tags)
+  < META_DATA: ((<META_DATA_TAG> <META_DATA_TAG>)  | (<META_DATA_TAG> <META_DATA_TAG> <META_DATA_TAG>) ) >
+|
+  < #META_DATA_TAG: "#" (~["\n","\r"])* ("\n"|"\r"|"\r\n") >
+}
+
 // For anything else, we return an ERROR token. Without this 
 // definition the TokenManager will throw an Error when a lexical 
 // error occurs, making it impossible to recover from it. So we 
@@ -311,6 +322,8 @@ parseJava(BracingStyle style):
     List<SourceToken> curLine = null;
 }
 {
+    // ignored
+    [<META_DATA>]
     [
         <PACKAGE>
         {
@@ -596,7 +609,7 @@ memberDecl(List<List<SourceToken>> src, int line, int count[], int level) :
             line = block(src, line, count, level)
         )
     |
-        LOOKAHEAD ( (scanBasicType() | scanReferenceType()) <IDENTIFIER> <LPAREN>)
+        LOOKAHEAD ( scanType() <IDENTIFIER> <LPAREN>)
         (
             type(src.get(line), count)
             {
@@ -627,6 +640,12 @@ memberDecl(List<List<SourceToken>> src, int line, int count[], int level) :
             |  
                 line = block(src, line, count, level)
             )
+//            {
+                // append a empty line at the end of each method
+                //++line;
+  //              src.add(emptyLine());
+
+    //        }
         )
     |
         (
@@ -742,6 +761,19 @@ type(List<SourceToken> curLine, int count[]) :
 
 private
 void
+scanType() :
+{
+}
+{
+    LOOKAHEAD ( scanReferenceType() )
+    scanReferenceType()
+|
+    scanBasicType()
+}
+
+
+private
+void
 basicType(List<SourceToken> curLine, int count[]) :
 {
 }
@@ -765,7 +797,7 @@ scanBasicType () :
 private
 void
 scanReferenceType () :
-{
+{   
 }
 {
     scanBasicType() (<LBRACK> <RBRACK>)+
@@ -965,8 +997,8 @@ block (List<List<SourceToken>> src, int line, int count[], int level) :
         ++count[0];
         ++line; 
 
-        src.add(emptyLine());
-        ++line;
+        //src.add(emptyLine());
+        //++line;
         
         return line;
      }
@@ -991,7 +1023,7 @@ blockStatement (List<List<SourceToken>> src, int line, int count[], int level) :
 }
 {
     (
-        LOOKAHEAD ( (scanBasicType() | scanReferenceType() ) <IDENTIFIER> )
+        LOOKAHEAD ( scanType()  <IDENTIFIER> )
         localVariableDeclarationStatement (cur = new ArrayList<SourceToken>(), count, level)
         {
             src.add(cur);
@@ -1073,7 +1105,12 @@ statement (List<List<SourceToken>> src, int line, int count[], int level) :
                 ++count[0];
                 ++line;
             }
-            line = statement(src, line, count, level + 1)
+            (
+               LOOKAHEAD ( <LCURLY> )
+                line = statement(src, line, count, level) // don't need to indent if see a block
+            |
+                line = statement(src, line, count, level + 1) 
+            )
         ]
     |
         <WHILE>
@@ -1091,6 +1128,9 @@ statement (List<List<SourceToken>> src, int line, int count[], int level) :
             count[0] += 2;
         }
         parExpression(curLine, count)                 // condition
+        {
+            ++line;
+        }
         // consequence
         (
             LOOKAHEAD ( <LCURLY> )
@@ -1377,7 +1417,7 @@ relationalExpression(List<SourceToken> curLine, int count[]):
 {
     additiveExpression(curLine, count)
     [
-        (<GT> | <LE> )
+        (<GT> | <LE> | <GE> | <LT>)
         {
             curLine.add(operator(token.image));
             curLine.add(space());

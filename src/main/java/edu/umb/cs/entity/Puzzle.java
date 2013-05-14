@@ -21,6 +21,7 @@
 
 package edu.umb.cs.entity;
 
+import edu.umb.cs.api.service.DatabaseService;
 import edu.umb.cs.parser.BracingStyle;
 import edu.umb.cs.parser.ParseException;
 import edu.umb.cs.source.Language;
@@ -30,11 +31,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.*;
@@ -56,6 +53,10 @@ public class Puzzle implements Serializable
     
     @Transient
     private SourceFile srcFile;
+    
+    @Transient
+    private List<Hint> cachedHints = null;
+    
     @Transient
     private final Language langType = Language.JAVA;  //TODO: Only support JAVA for now
                                                       // This should be settable later
@@ -70,8 +71,6 @@ public class Puzzle implements Serializable
     
     private String expectedResult;
     
-    private String metaData;
-    
     private int lang = langType.ordinal();
     
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.REMOVE}, 
@@ -82,13 +81,15 @@ public class Puzzle implements Serializable
                           fetch = FetchType.EAGER, mappedBy = "puzzle")
     private Set<Hint> hints;
  
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    private Category category;
+    
     public Puzzle()
     {
         
     }
     
-    public Puzzle (String path, String expRes, String mdata)
-            throws IOException, ParseException
+    public Puzzle (String path, String expRes, String catName) throws IOException, ParseException
     {
         File file = new File(path);
         if (!file.exists())
@@ -97,9 +98,10 @@ public class Puzzle implements Serializable
         prettyName = file.getName();
         filePath = path;
         expectedResult = expRes;
-        metaData = mdata;
         games = new HashSet<>();
         hints = new HashSet<>();
+        category = DatabaseService.findOrCreateCategory(catName);
+        category.addPuzzle(this);
     }
     
     public SourceFile getSourceFile(BracingStyle style) throws ParseException, FileNotFoundException
@@ -135,11 +137,18 @@ public class Puzzle implements Serializable
         hints.remove(h);
     }
     
-    public Set<Hint> getHints()
+    public List<Hint> getHints()
     {
-        return Collections.unmodifiableSet(hints);
+        if (cachedHints == null)
+            cachedHints = new ArrayList<>(hints);
+        return cachedHints;
     }
     
+    public String getExpectedOutput()
+    {
+        return expectedResult;
+    }
+
     @Override
     public String toString()
     {
